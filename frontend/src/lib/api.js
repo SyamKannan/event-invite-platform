@@ -91,6 +91,17 @@ export async function adminListInvitations() {
   return data;
 }
 
+// ---------- Client accounts (admin-only: who a given invitation belongs to) --
+
+export async function adminListClients() {
+  const { data } = await request('/api/admin/clients', { auth: true });
+  return data;
+}
+
+export function adminCreateClient(payload) {
+  return request('/api/admin/clients', { method: 'POST', body: payload, auth: true });
+}
+
 export async function adminCreateInvitation(payload) {
   const { data } = await request('/api/admin/invitations', { method: 'POST', body: payload, auth: true });
   return data;

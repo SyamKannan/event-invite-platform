@@ -17,7 +17,7 @@ import {
   adminCreateScheduleEvent, adminUpdateScheduleEvent, adminDeleteScheduleEvent,
   adminCreateMilestone, adminUpdateMilestone, adminDeleteMilestone,
   adminCreateGalleryImage, adminUpdateGalleryImage, adminDeleteGalleryImage,
-  adminUploadFile,
+  adminUploadFile, adminListClients, adminCreateClient,
 } from '../lib/api.js';
 import { useAdminAuth } from '../context/AdminAuthContext.jsx';
 import { THEME_PRESETS } from './themePresets.js';
@@ -196,6 +196,7 @@ function AudioField({ label = 'Audio file', path, onUpload }) {
 // ---- Basics ------------------------------------------------------------------
 
 function BasicsTab({ invitation, onSaved }) {
+  const { user } = useAdminAuth();
   const [slug, setSlug] = useState(invitation.slug);
   const [isPublished, setIsPublished] = useState(invitation.is_published);
   const [metaTitle, setMetaTitle] = useState(invitation.meta_title || '');
@@ -210,22 +211,150 @@ function BasicsTab({ invitation, onSaved }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="grid max-w-xl gap-5">
-      <Field label="Slug (URL)">
-        <input value={slug} onChange={(e) => setSlug(e.target.value)} className={inputClass} />
-      </Field>
-      <label className="flex items-center gap-3">
-        <input type="checkbox" checked={isPublished} onChange={(e) => setIsPublished(e.target.checked)} className="h-4 w-4" />
-        <span className="text-sm text-fg-soft">Published (visible at the public link)</span>
-      </label>
-      <Field label="Page title">
-        <input value={metaTitle} onChange={(e) => setMetaTitle(e.target.value)} className={inputClass} />
-      </Field>
-      <Field label="Page description">
-        <textarea value={metaDescription} onChange={(e) => setMetaDescription(e.target.value)} rows={3} className={inputClass} />
-      </Field>
-      <SaveButton />
-    </form>
+    <div className="grid max-w-xl gap-8">
+      <form onSubmit={handleSubmit} className="grid gap-5">
+        <Field label="Slug (URL)">
+          <input value={slug} onChange={(e) => setSlug(e.target.value)} className={inputClass} />
+        </Field>
+        <label className="flex items-center gap-3">
+          <input type="checkbox" checked={isPublished} onChange={(e) => setIsPublished(e.target.checked)} className="h-4 w-4" />
+          <span className="text-sm text-fg-soft">Published (visible at the public link)</span>
+        </label>
+        <Field label="Page title">
+          <input value={metaTitle} onChange={(e) => setMetaTitle(e.target.value)} className={inputClass} />
+        </Field>
+        <Field label="Page description">
+          <textarea value={metaDescription} onChange={(e) => setMetaDescription(e.target.value)} rows={3} className={inputClass} />
+        </Field>
+        <SaveButton />
+      </form>
+
+      {user.role === 'admin' && <OwnerSection invitation={invitation} onSaved={onSaved} />}
+    </div>
+  );
+}
+
+// ---- Owner (admin-only: which client account this invitation belongs to) ----
+//
+// A client logs in separately from the super-admin (their own email/password,
+// same /admin/login form) and only ever sees invitations where owner_id
+// matches their user id — this is where that assignment happens. Without an
+// owner, only the admin can see/manage the invitation; a client has no way
+// to reach it at all.
+
+function OwnerSection({ invitation, onSaved }) {
+  const [clients, setClients] = useState(null);
+  const [selectedId, setSelectedId] = useState(invitation.owner_id || '');
+  const [creatingNew, setCreatingNew] = useState(false);
+  const [newClient, setNewClient] = useState({ name: '', email: '', password: '' });
+  const [error, setError] = useState(null);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    adminListClients().then(setClients);
+  }, []);
+
+  async function assignOwner(ownerId) {
+    setError(null);
+    try {
+      const updated = await adminUpdateInvitation(invitation.id, { owner_id: ownerId || null });
+      onSaved({ ...invitation, ...updated });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setError(err.message || 'Failed to update owner.');
+    }
+  }
+
+  function handleSelectChange(e) {
+    const value = e.target.value;
+    setSelectedId(value);
+    assignOwner(value || null);
+  }
+
+  async function handleCreateClient(e) {
+    e.preventDefault();
+    setError(null);
+    try {
+      const client = await adminCreateClient(newClient);
+      setClients((list) => [...(list || []), client]);
+      setSelectedId(client.id);
+      setCreatingNew(false);
+      setNewClient({ name: '', email: '', password: '' });
+      await assignOwner(client.id);
+    } catch (err) {
+      setError(err.errors?.email?.[0] || err.message || 'Failed to create client.');
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-accent/15 p-5">
+      <h3 className="text-sm uppercase tracking-[0.2em] text-fg-soft">Client owner</h3>
+      <p className="mt-1 text-xs text-fg-soft">
+        The client account that can log in and view this invitation's RSVPs and wishes.
+      </p>
+
+      {clients === null ? (
+        <p className="mt-4 text-sm text-fg-soft">Loading…</p>
+      ) : (
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <select value={selectedId} onChange={handleSelectChange} className={inputClass}>
+            <option value="">— No owner (admin-only) —</option>
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>{c.name} ({c.email})</option>
+            ))}
+          </select>
+          {saved && <span className="text-sm text-accent">Saved ✓</span>}
+          <button
+            type="button"
+            onClick={() => setCreatingNew((v) => !v)}
+            className="ml-auto rounded-full border border-accent/30 px-4 py-1.5 text-xs uppercase tracking-[0.15em] text-fg-soft transition hover:bg-accent/10 hover:text-accent"
+          >
+            {creatingNew ? 'Cancel' : '+ New client'}
+          </button>
+        </div>
+      )}
+
+      {creatingNew && (
+        <form onSubmit={handleCreateClient} className="mt-4 grid gap-3 rounded-xl border border-accent/10 p-4">
+          <Field label="Client name">
+            <input
+              value={newClient.name}
+              onChange={(e) => setNewClient((c) => ({ ...c, name: e.target.value }))}
+              required
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Client email">
+            <input
+              type="email"
+              value={newClient.email}
+              onChange={(e) => setNewClient((c) => ({ ...c, email: e.target.value }))}
+              required
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Temporary password">
+            <input
+              type="text"
+              value={newClient.password}
+              onChange={(e) => setNewClient((c) => ({ ...c, password: e.target.value }))}
+              required
+              minLength={8}
+              className={inputClass}
+            />
+          </Field>
+          <button
+            type="submit"
+            className="justify-self-start rounded-full bg-accent px-5 py-2 text-xs uppercase tracking-[0.2em] text-white transition hover:bg-gold"
+          >
+            Create &amp; assign
+          </button>
+        </form>
+      )}
+
+      {error && <p className="mt-3 text-sm text-rose">{error}</p>}
+    </div>
   );
 }
 

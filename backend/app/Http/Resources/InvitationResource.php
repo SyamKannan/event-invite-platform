@@ -21,6 +21,7 @@ class InvitationResource extends JsonResource
             'slug' => $this->slug,
             'type' => $this->type,
             'is_published' => $this->is_published,
+            'owner_id' => $this->owner_id,
             'theme' => $this->theme,
             'meta_title' => $this->meta_title,
             'meta_description' => $this->meta_description,

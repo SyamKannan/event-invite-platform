@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AuthController;
+use App\Http\Controllers\Admin\ClientUserController;
 use App\Http\Controllers\Admin\GalleryImageController;
 use App\Http\Controllers\Admin\InvitationController as AdminInvitationController;
 use App\Http\Controllers\Admin\MilestoneController;
@@ -31,6 +32,9 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function (): void {
         'invitations' => 'invitation',
     ]);
     Route::put('invitations/{invitation}', [AdminInvitationController::class, 'update']);
+
+    Route::get('clients', [ClientUserController::class, 'index']);
+    Route::post('clients', [ClientUserController::class, 'store']);
 
     Route::prefix('invitations/{invitation}')->group(function (): void {
         Route::post('people', [PersonController::class, 'store']);
