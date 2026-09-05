@@ -104,7 +104,7 @@ export default function RsvpList() {
           <button
             type="button"
             onClick={() => adminExportRsvps(id)}
-            className="inline-flex items-center gap-2 rounded-full border border-accent/30 px-4 py-2 text-xs uppercase tracking-[0.2em] text-ink transition hover:bg-accent/10"
+            className="inline-flex items-center gap-2 rounded-full border border-accent/30 px-4 py-2 text-xs uppercase tracking-[0.2em] text-fg-soft transition hover:bg-accent/10 hover:text-accent"
           >
             <Download size={14} /> Export CSV
           </button>
