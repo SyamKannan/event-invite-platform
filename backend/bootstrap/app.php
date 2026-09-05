@@ -16,10 +16,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->statefulApi();
 
         // Public invitation endpoints (RSVP, wishes) are read/written by
-        // anonymous visitors with no CSRF cookie — only the admin SPA
-        // flow goes through the stateful CSRF check.
+        // anonymous visitors with no CSRF cookie. Admin login is a stateless
+        // credential exchange that returns a Sanctum bearer token (not
+        // cookie-session auth), so it carries no CSRF cookie either — both
+        // are exempt from the stateful CSRF check.
         $middleware->validateCsrfTokens(except: [
             'api/invitations/*',
+            'api/admin/login',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

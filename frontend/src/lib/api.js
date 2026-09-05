@@ -3,37 +3,35 @@
 //
 // Two kinds of calls:
 //   - Public: reading/writing one invitation by slug. No auth needed.
-//   - Admin: authenticated via Laravel Sanctum's SPA cookie flow. Before any
-//     admin POST/PUT/DELETE, the browser must hold a CSRF cookie (fetched
-//     once via ensureCsrfCookie()) which we echo back as the X-XSRF-TOKEN
-//     header — Sanctum/Laravel matches the two to prove the request came
-//     from our own frontend, not a forged cross-site request.
+//   - Admin: authenticated via a Sanctum personal access token (Bearer
+//     header), not cookie-session auth. The frontend (Vercel) and backend
+//     (Railway) live on unrelated domains, and browsers increasingly block
+//     cross-site cookies even with SameSite=None — a token in localStorage,
+//     sent as `Authorization: Bearer <token>`, sidesteps that entirely.
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001';
+const TOKEN_KEY = 'admin_token';
 
-function readCookie(name) {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match ? decodeURIComponent(match[1]) : null;
+export function getAdminToken() {
+  return localStorage.getItem(TOKEN_KEY);
 }
 
-async function ensureCsrfCookie() {
-  if (readCookie('XSRF-TOKEN')) return;
-  await fetch(`${API_BASE}/sanctum/csrf-cookie`, { credentials: 'include' });
+export function setAdminToken(token) {
+  if (token) localStorage.setItem(TOKEN_KEY, token);
+  else localStorage.removeItem(TOKEN_KEY);
 }
 
 async function request(path, { method = 'GET', body, auth = false } = {}) {
   const headers = { Accept: 'application/json' };
   if (body) headers['Content-Type'] = 'application/json';
-
-  if (auth && method !== 'GET') {
-    await ensureCsrfCookie();
-    headers['X-XSRF-TOKEN'] = readCookie('XSRF-TOKEN');
+  if (auth) {
+    const token = getAdminToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
   }
 
   const res = await fetch(`${API_BASE}${path}`, {
     method,
     headers,
-    credentials: auth ? 'include' : 'same-origin',
     body: body ? JSON.stringify(body) : undefined,
   });
 
@@ -71,12 +69,17 @@ export function postWish(slug, payload) {
 // ---------- Admin (Sanctum-authenticated) ------------------------------------
 
 export async function adminLogin(email, password) {
-  await ensureCsrfCookie();
-  return request('/api/admin/login', { method: 'POST', body: { email, password }, auth: true });
+  const { user, token } = await request('/api/admin/login', { method: 'POST', body: { email, password } });
+  setAdminToken(token);
+  return user;
 }
 
-export function adminLogout() {
-  return request('/api/admin/logout', { method: 'POST', auth: true });
+export async function adminLogout() {
+  try {
+    await request('/api/admin/logout', { method: 'POST', auth: true });
+  } finally {
+    setAdminToken(null);
+  }
 }
 
 export function adminMe() {
@@ -156,17 +159,15 @@ export function adminDeleteGalleryImage(invitationId, imageId) {
 }
 
 export async function adminUploadFile(invitationId, file, kind = 'image') {
-  await ensureCsrfCookie();
   const formData = new FormData();
   formData.append('file', file);
   formData.append('type', kind);
 
   const res = await fetch(`${API_BASE}/api/admin/invitations/${invitationId}/upload`, {
     method: 'POST',
-    credentials: 'include',
     headers: {
       Accept: 'application/json',
-      'X-XSRF-TOKEN': readCookie('XSRF-TOKEN'),
+      Authorization: `Bearer ${getAdminToken()}`,
     },
     body: formData,
   });
@@ -185,8 +186,22 @@ export function adminListRsvps(invitationId) {
   return request(`/api/admin/invitations/${invitationId}/rsvps`, { auth: true });
 }
 
-export function adminExportRsvpsUrl(invitationId) {
-  return `${API_BASE}/api/admin/invitations/${invitationId}/rsvps/export`;
+// A plain <a href> can't carry an Authorization header, so the export is
+// fetched here (with the Bearer token) and handed to the browser as a blob
+// download instead of a direct link.
+export async function adminExportRsvps(invitationId) {
+  const res = await fetch(`${API_BASE}/api/admin/invitations/${invitationId}/rsvps/export`, {
+    headers: { Authorization: `Bearer ${getAdminToken()}` },
+  });
+  if (!res.ok) throw new Error('Export failed');
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'rsvps.csv';
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 export function adminListWishes(invitationId) {

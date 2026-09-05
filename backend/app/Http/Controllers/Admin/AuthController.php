@@ -18,25 +18,23 @@ class AuthController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        if (! Auth::attempt($credentials)) {
+        /** @var User|null $user */
+        $user = User::where('email', $credentials['email'])->first();
+
+        if (! $user || ! Auth::getProvider()->validateCredentials($user, $credentials)) {
             throw ValidationException::withMessages([
                 'email' => ['These credentials do not match our records.'],
             ]);
         }
 
-        $request->session()->regenerate();
+        $token = $user->createToken('admin-spa')->plainTextToken;
 
-        /** @var User $user */
-        $user = Auth::user();
-
-        return response()->json(['user' => $this->userPayload($user)]);
+        return response()->json(['user' => $this->userPayload($user), 'token' => $token]);
     }
 
     public function logout(Request $request): JsonResponse
     {
-        Auth::guard('web')->logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        $request->user()?->currentAccessToken()?->delete();
 
         return response()->json(['message' => 'Logged out.']);
     }

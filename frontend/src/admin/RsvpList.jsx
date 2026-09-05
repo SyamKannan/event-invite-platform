@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Download } from 'lucide-react';
-import { adminExportRsvpsUrl, adminListRsvps } from '../lib/api.js';
+import { adminExportRsvps, adminListRsvps } from '../lib/api.js';
 import { useAdminAuth } from '../context/AdminAuthContext.jsx';
 
 export default function RsvpList() {
@@ -35,12 +35,13 @@ export default function RsvpList() {
       <div className="mt-3 flex items-center justify-between">
         <h1 className="font-display text-3xl">RSVPs</h1>
         {!forbidden && (
-          <a
-            href={adminExportRsvpsUrl(id)}
+          <button
+            type="button"
+            onClick={() => adminExportRsvps(id)}
             className="inline-flex items-center gap-2 rounded-full border border-accent/30 px-4 py-2 text-xs uppercase tracking-[0.2em] text-ink transition hover:bg-accent/10"
           >
             <Download size={14} /> Export CSV
-          </a>
+          </button>
         )}
       </div>
 

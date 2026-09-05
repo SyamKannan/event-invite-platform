@@ -21,7 +21,7 @@ export default function Login() {
       await adminLogin(email, password);
       navigate('/admin');
     } catch (err) {
-      setError('Incorrect email or password.');
+      setError(err.status === 422 ? 'Incorrect email or password.' : err.message || 'Login failed.');
     } finally {
       setSubmitting(false);
     }
