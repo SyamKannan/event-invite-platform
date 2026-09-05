@@ -1,0 +1,170 @@
+/* =============================================================================
+   GLOBAL STYLES
+   -----------------------------------------------------------------------------
+   Tailwind gives us utility classes (like `flex`, `p-4`) so we rarely need to
+   write CSS by hand. This file:
+     1. Pulls in Tailwind
+     2. Defines theme color/font variables
+     3. Adds custom keyframe animations
+   ========================================================================== */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------- Theme tokens ---------- */
+/* Each color is an RGB triplet (no commas). Tailwind uses these via the
+   `bg`, `fg`, `accent` etc. classes — see tailwind.config.js. */
+:root {
+  --color-bg: 50 12 24;           /* deep wine background */
+  --color-surface: 255 248 241;   /* cream cards */
+  --color-fg: 245 232 215;        /* warm ivory text */
+  --color-fg-soft: 220 200 175;   /* dim ivory */
+  --color-ink: 47 25 30;          /* deep wine ink (text on cream cards) */
+  --color-muted: 175 150 130;     /* warm taupe */
+  --color-accent: 212 168 95;     /* warm gold */
+  --color-gold: 195 145 70;       /* deeper gold */
+  --color-rose: 207 142 132;      /* dusty rose */
+
+  --font-display: 'Cormorant Garamond', serif;
+  --font-body: 'Inter', sans-serif;
+  --font-script: 'Great Vibes', cursive;
+}
+
+/* Remove the blue tap highlight on mobile. */
+* { -webkit-tap-highlight-color: transparent; }
+
+/* When you click a nav link, scroll smoothly instead of jumping. */
+html { scroll-behavior: smooth; }
+
+body {
+  @apply bg-bg text-fg font-body antialiased;
+  background-image:
+    radial-gradient(circle at 20% 10%, rgb(var(--color-accent) / 0.12), transparent 40%),
+    radial-gradient(circle at 80% 90%, rgb(var(--color-rose) / 0.10), transparent 50%);
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Highlight color when you select text. */
+::selection { background: rgb(var(--color-accent) / 0.35); color: rgb(var(--color-fg)); }
+
+/* ---------- Decorative ornament under section titles ---------- */
+.divider-ornament {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: rgb(var(--color-accent));
+}
+.divider-ornament::before,
+.divider-ornament::after {
+  content: '';
+  height: 1px;
+  width: 3rem;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(var(--color-accent) / 0.6),
+    transparent
+  );
+}
+
+/* ---------- Shimmering gold text (used for the couple's names) ---------- */
+.shimmer-text {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--color-gold)),
+    rgb(var(--color-accent)),
+    rgb(var(--color-rose)),
+    rgb(var(--color-gold))
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 6s linear infinite;
+}
+
+/* ---------- Gentle "breathing" glow (used on the countdown cards) ---------- */
+.breathe {
+  animation: breathe 4s ease-in-out infinite;
+}
+
+/* ---------- Animated rotating gradient border (used on hover) ---------- */
+.glow-card {
+  position: relative;
+}
+.glow-card::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--angle, 0deg),
+    transparent 60%,
+    rgb(var(--color-accent) / 0.7),
+    rgb(var(--color-rose) / 0.7),
+    transparent 100%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  animation: spin-border 6s linear infinite;
+}
+.glow-card:hover::before { opacity: 1; }
+
+/* ---------- Floating decoration animation (hearts/petals drifting up) ---------- */
+.floater {
+  position: fixed;
+  bottom: -40px;
+  font-size: 18px;
+  color: rgb(var(--color-accent) / 0.6);
+  pointer-events: none;
+  user-select: none;
+  animation: float-up linear infinite;
+  z-index: 1;
+}
+
+/* ---------- Sticky Nav ---------- */
+/* The nav bar uses sticky positioning and blurs the background for legibility. */
+.nav-blur {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* ---------- Keyframes (the actual animation steps) ---------- */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes breathe {
+  0%, 100% { box-shadow: 0 8px 30px -20px rgb(var(--color-fg) / 0.3); }
+  50%      { box-shadow: 0 8px 30px -10px rgb(var(--color-accent) / 0.45); }
+}
+
+@keyframes spin-border {
+  0%   { --angle: 0deg; }
+  100% { --angle: 360deg; }
+}
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes float-up {
+  0%   { transform: translateY(0) translateX(0) rotate(0deg);   opacity: 0; }
+  10%  { opacity: 1; }
+  100% { transform: translateY(-110vh) translateX(40px) rotate(360deg); opacity: 0; }
+}
+
+/* Smooth fade-in for images while they load. */
+img { @apply transition-opacity duration-700; }
+img.loading { @apply opacity-0; }

@@ -1,0 +1,9 @@
+# Root-level catch-all for the monorepo.
+# frontend/ and backend/ each keep their own detailed .gitignore.
+.DS_Store
+Thumbs.db
+*.log
+.vscode/*
+!.vscode/extensions.json
+.idea
+.claude/scheduled_tasks.lock
