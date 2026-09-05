@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Cake, ExternalLink, Heart, MessageSquare, Plus, Users } from 'lucide-react';
+import { Cake, Check, Copy, ExternalLink, Heart, MessageSquare, Plus, Users } from 'lucide-react';
 import { adminCreateInvitation, adminListInvitations } from '../lib/api.js';
 
 export default function Dashboard() {
@@ -13,6 +13,14 @@ export default function Dashboard() {
   const [newSlug, setNewSlug] = useState('');
   const [newType, setNewType] = useState('wedding');
   const [error, setError] = useState(null);
+  const [copiedId, setCopiedId] = useState(null);
+
+  function copyLink(inv) {
+    const url = `${window.location.origin}/i/${inv.slug}`;
+    navigator.clipboard.writeText(url);
+    setCopiedId(inv.id);
+    setTimeout(() => setCopiedId((id) => (id === inv.id ? null : id)), 2000);
+  }
 
   useEffect(() => {
     adminListInvitations().then(setInvitations);
@@ -119,11 +127,26 @@ export default function Dashboard() {
               >
                 <MessageSquare size={12} /> Wishes
               </Link>
+              <button
+                type="button"
+                onClick={() => copyLink(inv)}
+                className="ml-auto inline-flex items-center gap-1 text-xs uppercase tracking-[0.15em] text-accent"
+              >
+                {copiedId === inv.id ? (
+                  <>
+                    <Check size={12} /> Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy size={12} /> Copy Link
+                  </>
+                )}
+              </button>
               <a
                 href={`/i/${inv.slug}`}
                 target="_blank"
                 rel="noreferrer"
-                className="ml-auto inline-flex items-center gap-1 text-xs uppercase tracking-[0.15em] text-accent"
+                className="inline-flex items-center gap-1 text-xs uppercase tracking-[0.15em] text-accent"
               >
                 <ExternalLink size={12} /> View
               </a>
