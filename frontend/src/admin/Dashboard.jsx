@@ -15,8 +15,11 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
 
-  function copyLink(inv) {
-    const url = `${window.location.origin}/i/${inv.slug}`;
+  // Copies a link to this invitation's RSVP dashboard (who responded, guest
+  // counts, etc.) — not the public guest-facing page, which "View" already
+  // covers. Useful for handing the client a direct link to their responses.
+  function copyRsvpLink(inv) {
+    const url = `${window.location.origin}/admin/invitations/${inv.id}/rsvps`;
     navigator.clipboard.writeText(url);
     setCopiedId(inv.id);
     setTimeout(() => setCopiedId((id) => (id === inv.id ? null : id)), 2000);
@@ -129,7 +132,8 @@ export default function Dashboard() {
               </Link>
               <button
                 type="button"
-                onClick={() => copyLink(inv)}
+                onClick={() => copyRsvpLink(inv)}
+                title="Copy a link to this invitation's RSVP dashboard"
                 className="ml-auto inline-flex items-center gap-1 text-xs uppercase tracking-[0.15em] text-accent"
               >
                 {copiedId === inv.id ? (
@@ -138,7 +142,7 @@ export default function Dashboard() {
                   </>
                 ) : (
                   <>
-                    <Copy size={12} /> Copy Link
+                    <Copy size={12} /> Copy RSVP Link
                   </>
                 )}
               </button>

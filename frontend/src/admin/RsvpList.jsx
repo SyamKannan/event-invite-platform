@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Check, Copy, Download, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Check, Copy, Download, ExternalLink, MessageCircle, Share2 } from 'lucide-react';
 import { adminExportRsvps, adminGetInvitation, adminListRsvps } from '../lib/api.js';
 import { useAdminAuth } from '../context/AdminAuthContext.jsx';
 
@@ -36,6 +36,24 @@ export default function RsvpList() {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  const shareText = 'You are invited! Please open the invitation:';
+
+  function shareToWhatsapp() {
+    const text = encodeURIComponent(`${shareText} ${shareUrl}`);
+    window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener,noreferrer');
+  }
+
+  // Opens the device's native share sheet (Instagram, Messages, Telegram,
+  // etc. all register as targets on mobile) when available; falls back to
+  // WhatsApp on desktop browsers that don't support the Web Share API.
+  function shareNative() {
+    if (navigator.share) {
+      navigator.share({ title: 'Invitation', text: shareText, url: shareUrl }).catch(() => {});
+    } else {
+      shareToWhatsapp();
+    }
+  }
+
   return (
     <div>
       <Link to="/admin" className="inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.2em] text-fg-soft transition hover:text-accent">
@@ -55,13 +73,27 @@ export default function RsvpList() {
           >
             {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'Copied' : 'Copy Link'}
           </button>
+          <button
+            type="button"
+            onClick={shareToWhatsapp}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#25D366] px-4 py-2 text-xs uppercase tracking-[0.15em] text-white transition hover:brightness-95"
+          >
+            <MessageCircle size={14} /> WhatsApp
+          </button>
+          <button
+            type="button"
+            onClick={shareNative}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-xs uppercase tracking-[0.15em] text-white transition hover:bg-gold"
+          >
+            <Share2 size={14} /> Share
+          </button>
           <a
             href={shareUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-xs uppercase tracking-[0.15em] text-white transition hover:bg-gold"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-accent/30 px-4 py-2 text-xs uppercase tracking-[0.15em] text-ink transition hover:bg-accent/10"
           >
-            <ExternalLink size={14} /> Share with guests
+            <ExternalLink size={14} /> Preview
           </a>
         </div>
       )}
