@@ -10,7 +10,8 @@
 
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, MapPin, Plus, Trash2, Upload } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ArrowLeft, Check, MapPin, Plus, Trash2, Upload } from 'lucide-react';
 import {
   adminGetInvitation, adminUpdateInvitation,
   adminCreateScheduleEvent, adminUpdateScheduleEvent, adminDeleteScheduleEvent,
@@ -77,10 +78,7 @@ export default function InvitationEditor() {
         <ArrowLeft size={14} /> Back to dashboard
       </Link>
 
-      <div className="mt-3 flex items-center justify-between">
-        <h1 className="font-display text-3xl">{invitation.slug}</h1>
-        {savedAt && <span className="text-sm text-accent">Saved ✓</span>}
-      </div>
+      <h1 className="mt-3 font-display text-3xl">{invitation.slug}</h1>
 
       <div className="mt-6 flex flex-wrap gap-1 border-b border-accent/15 pb-2">
         {TABS.map((t) => (
@@ -100,13 +98,39 @@ export default function InvitationEditor() {
         {tab === 'Basics' && <BasicsTab invitation={invitation} onSaved={(inv) => { setInvitation(inv); flash(); }} />}
         {tab === 'People' && <PeopleTab invitation={invitation} onSaved={(inv) => { setInvitation(inv); flash(); }} />}
         {tab === 'Date & Venue' && <DateVenueTab invitation={invitation} onSaved={(inv) => { setInvitation(inv); flash(); }} />}
-        {tab === 'Schedule' && <ScheduleTab invitation={invitation} onChange={refresh} />}
+        {tab === 'Schedule' && <ScheduleTab invitation={invitation} onChange={refresh} onSaved={flash} />}
         {tab === 'Story' && <StoryTab invitation={invitation} onChange={refresh} onSaved={(inv) => { setInvitation(inv); flash(); }} />}
-        {tab === 'Gallery' && <GalleryTab invitation={invitation} onChange={refresh} />}
+        {tab === 'Gallery' && <GalleryTab invitation={invitation} onChange={refresh} onSaved={flash} />}
         {tab === 'Theme & Motion' && <ThemeMotionTab invitation={invitation} onSaved={(inv) => { setInvitation(inv); flash(); }} />}
         {tab === 'Contact' && <ContactTab invitation={invitation} onSaved={(inv) => { setInvitation(inv); flash(); }} />}
       </div>
+
+      <SavedToast visible={!!savedAt} />
     </div>
+  );
+}
+
+// ---- floating "Saved" toast --------------------------------------------------
+//
+// Fixed to the viewport (not inline in the page flow) so it's visible no
+// matter how far down a long form (Schedule/Story with many rows, Date &
+// Venue's many fields) the admin has scrolled when they click Save.
+
+function SavedToast({ visible }) {
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          initial={{ opacity: 0, y: 16, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 8, scale: 0.95 }}
+          transition={{ duration: 0.25 }}
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-medium text-white shadow-[0_12px_30px_-10px_rgba(0,0,0,0.6)]"
+        >
+          <Check size={16} strokeWidth={3} /> Saved
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -358,7 +382,7 @@ function DateVenueTab({ invitation, onSaved }) {
 
 // ---- Schedule (repeatable events, with a map/location picker) ------------------
 
-function ScheduleTab({ invitation, onChange }) {
+function ScheduleTab({ invitation, onChange, onSaved }) {
   const [events, setEvents] = useState(invitation.schedule_events || []);
 
   function update(index, key, value) {
@@ -376,6 +400,7 @@ function ScheduleTab({ invitation, onChange }) {
     const ev = events[index];
     await adminUpdateScheduleEvent(invitation.id, ev.id, ev);
     onChange();
+    onSaved?.();
   }
 
   async function handleDelete(index) {
@@ -449,6 +474,7 @@ function StoryTab({ invitation, onChange, onSaved }) {
     const m = milestones[index];
     await adminUpdateMilestone(invitation.id, m.id, m);
     onChange();
+    onSaved?.(invitation);
   }
 
   async function handleDelete(index) {
@@ -509,13 +535,14 @@ function StoryTab({ invitation, onChange, onSaved }) {
 
 // ---- Gallery (multi-image upload) ----------------------------------------------
 
-function GalleryTab({ invitation, onChange }) {
+function GalleryTab({ invitation, onChange, onSaved }) {
   const [images, setImages] = useState(invitation.gallery_images || []);
 
   async function handleUpload(file) {
     const { path } = await adminUploadFile(invitation.id, file, 'image');
     const created = await adminCreateGalleryImage(invitation.id, { image: path, alt: file.name });
     setImages((imgs) => [...imgs, created]);
+    onSaved?.();
   }
 
   async function updateAlt(index, alt) {

@@ -7,3 +7,14 @@ Thumbs.db
 !.vscode/extensions.json
 .idea
 .claude/scheduled_tasks.lock
+
+# Defensive: these shouldn't exist yet, but guard against accidental commits
+# if a future session generates them at the repo root instead of nested.
+node_modules/
+vendor/
+dist/
+dist-ssr/
+*.env
+*.env.local
+*.env.*.local
+!*.env.example

@@ -1,14 +1,25 @@
-// SCRATCH REVEAL — three little gold "coins" the visitor scratches with
-// their finger or mouse to expose the wedding date. A delightful interactive
-// touch you don't see often.
+// SCRATCH REVEAL — three little "coins" the visitor scratches with their
+// finger or mouse to expose the wedding date. A delightful interactive touch
+// you don't see often.
 //
-// How it works: each coin is a <canvas>. We paint a gold gradient on top and
-// listen for pointer-move events while the pointer is down. Each move erases
-// a circle from the canvas (using globalCompositeOperation = 'destination-out').
-// When ~60% of the canvas is erased, we mark the coin as "revealed" and
-// fade the canvas away to show the date underneath.
+// How it works: each coin is a <canvas>. We paint a gradient on top — built
+// from this invitation's --color-accent/--color-gold CSS variables, not
+// hardcoded hex, so the coin matches the current theme instead of always
+// looking gold — and listen for pointer-move events while the pointer is
+// down. Each move erases a circle from the canvas (using
+// globalCompositeOperation = 'destination-out'). When ~55% of the canvas is
+// erased, we mark the coin as "revealed" and fade the canvas away to show
+// the date underneath.
 
 import { useEffect, useRef, useState } from 'react';
+
+// Reads a `--color-*` CSS variable (stored as an "R G B" triplet, per
+// index.css/ThemeProvider) off <html> and returns it as an "rgb(r, g, b)"
+// string usable in a canvas fillStyle/gradient.
+function readThemeColor(varName, fallback) {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+  return raw ? `rgb(${raw.split(/\s+/).join(', ')})` : fallback;
+}
 
 export function ScratchCoin({ value, label, size = 88 }) {
   const canvasRef = useRef(null);
@@ -16,7 +27,9 @@ export function ScratchCoin({ value, label, size = 88 }) {
   const isDownRef = useRef(false);
   const checkedRef = useRef(false);
 
-  // Paint the gold surface once when the canvas is ready.
+  // Paint the coin surface once when the canvas is ready, using this
+  // invitation's current theme colors (re-reads on every mount, which is
+  // enough since ConfigProvider/ThemeProvider remount per-slug).
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -29,11 +42,14 @@ export function ScratchCoin({ value, label, size = 88 }) {
     const ctx = canvas.getContext('2d');
     ctx.scale(dpr, dpr);
 
-    // Gold radial gradient — looks like a metal coin.
+    const accent = readThemeColor('--color-accent', '#c39146');
+    const gold = readThemeColor('--color-gold', '#8d6322');
+
+    // Theme-colored radial gradient — looks like a metal coin.
     const grad = ctx.createLinearGradient(0, 0, size, size);
-    grad.addColorStop(0,    '#e7c489');
-    grad.addColorStop(0.5,  '#c39146');
-    grad.addColorStop(1,    '#8d6322');
+    grad.addColorStop(0,    accent);
+    grad.addColorStop(0.5,  accent);
+    grad.addColorStop(1,    gold);
     ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.arc(size / 2, size / 2, size / 2 - 1, 0, Math.PI * 2);

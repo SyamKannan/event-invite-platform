@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { CoverContent } from '../CoverContent.jsx';
 import { useEnvelopeOpen } from '../useEnvelopeOpen.js';
 
-export const DURATION_MS = 1300;
+export const DURATION_MS = 1200;
 
 export function ZoomThrough() {
   const { opening, done, handleOpen } = useEnvelopeOpen(DURATION_MS);
@@ -17,7 +17,7 @@ export function ZoomThrough() {
       <motion.div
         initial={{ scale: 1, opacity: 1 }}
         animate={opening ? { scale: 6, opacity: [1, 1, 0] } : { scale: 1, opacity: 1 }}
-        transition={{ duration: 1.05, ease: [0.6, 0, 0.9, 0.2], times: [0, 0.7, 1] }}
+        transition={{ duration: 0.9, ease: [0.55, 0, 1, 0.45], opacity: { duration: 0.9, times: [0, 0.55, 0.85] } }}
         className="absolute inset-0"
         style={{
           background:
@@ -39,7 +39,7 @@ export function ZoomThrough() {
         aria-hidden
         initial={{ opacity: 0 }}
         animate={opening ? { opacity: [0, 0.9, 0] } : { opacity: 0 }}
-        transition={{ duration: 1, times: [0, 0.5, 1] }}
+        transition={{ duration: 0.85, times: [0, 0.45, 1] }}
         className="pointer-events-none absolute inset-0"
         style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.5), transparent 60%)' }}
       />
@@ -53,8 +53,8 @@ export function ZoomThrough() {
         >
           <CoverContent
             opening={opening}
-            exitAnimation={{ opacity: [1, 1, 0], scale: [1, 1.8, 3.2] }}
-            exitTransition={{ duration: 0.9, times: [0, 0.4, 1], ease: 'easeIn' }}
+            exitAnimation={{ opacity: [1, 0.6, 0], scale: [1, 1.4, 2] }}
+            exitTransition={{ duration: 0.45, times: [0, 0.5, 1], ease: 'easeIn' }}
           />
         </button>
       </div>

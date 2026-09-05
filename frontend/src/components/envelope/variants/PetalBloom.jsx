@@ -1,18 +1,14 @@
-// PETAL BLOOM — wedge-shaped "petals" radiate from the center and fold flat
-// outward like a flower opening, with soft petal-shaped confetti drifting
-// free once bloomed.
+// PETAL BLOOM — a soft rose-colored bloom expands from the center (a simple,
+// reliable radial clip-path reveal, not a 3D wedge fold — an earlier version
+// used rotating wedges which looked like a confusing star/X shape mid-turn
+// and hid the names too early), while petal-shaped confetti drifts outward.
 
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { CoverContent } from '../CoverContent.jsx';
 import { useEnvelopeOpen } from '../useEnvelopeOpen.js';
 
-export const DURATION_MS = 1600;
-
-const PETAL_COUNT = 8;
-// Each petal is a wide triangular wedge, oversized so neighbors overlap and
-// fully tile the circle with no gaps once fanned around the center.
-const PETAL_HALF_ANGLE_DEG = (360 / PETAL_COUNT) * 0.75;
+export const DURATION_MS = 1500;
 
 export function PetalBloom() {
   const { opening, done, handleOpen } = useEnvelopeOpen(DURATION_MS);
@@ -27,7 +23,7 @@ export function PetalBloom() {
           x: Math.cos(angle) * distance,
           y: Math.sin(angle) * distance,
           rotate: Math.random() * 540 - 270,
-          delay: 0.2 + Math.random() * 0.3,
+          delay: 0.35 + Math.random() * 0.25,
           size: 14 + Math.random() * 10,
         };
       }),
@@ -37,45 +33,33 @@ export function PetalBloom() {
   if (done) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] overflow-hidden" style={{ perspective: '1800px' }}>
-      {/* Base fill so there's never a gap visible behind the petals */}
-      <div className="absolute inset-0" style={{ backgroundColor: 'rgb(var(--color-bg))' }} />
+    <div className="fixed inset-0 z-[200] overflow-hidden">
+      {/* Base cover */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: `radial-gradient(circle at 50% 45%, rgb(var(--color-rose) / 0.35), rgb(var(--color-bg)) 60%)`,
+        }}
+      />
 
-      {Array.from({ length: PETAL_COUNT }).map((_, i) => {
-        const rotate = (360 / PETAL_COUNT) * i;
-        const half = PETAL_HALF_ANGLE_DEG;
-        return (
-          <motion.div
-            key={i}
-            aria-hidden
-            initial={{ rotateX: 0 }}
-            animate={opening ? { rotateX: -120 } : { rotateX: 0 }}
-            transition={{ duration: 1.1, ease: [0.65, 0.05, 0.35, 1], delay: 0.1 + i * 0.03 }}
-            className="absolute left-1/2 top-1/2"
-            style={{
-              width: '200vmax',
-              height: '200vmax',
-              marginLeft: '-100vmax',
-              marginTop: '-100vmax',
-              transform: `rotate(${rotate}deg)`,
-              transformOrigin: '50% 50%',
-              transformStyle: 'preserve-3d',
-              // A wide triangular wedge pointing "up" from the center,
-              // spanning +/- half the petal angle so neighbors overlap.
-              clipPath: `polygon(50% 50%, ${50 - 50 * Math.tan((half * Math.PI) / 180)}% 0%, ${50 + 50 * Math.tan((half * Math.PI) / 180)}% 0%)`,
-            }}
-          >
-            <div
-              className="h-full w-full"
-              style={{
-                background: `radial-gradient(circle at 50% 50%, rgb(var(--color-rose) / 0.55), rgb(var(--color-bg)) 45%)`,
-              }}
-            />
-          </motion.div>
-        );
-      })}
+      {/* The bloom itself — a soft petal-colored disc that grows and fades,
+          clipped away entirely once fully open so the page underneath shows. */}
+      <motion.div
+        aria-hidden
+        initial={{ clipPath: 'circle(0% at 50% 45%)', opacity: 1 }}
+        animate={
+          opening
+            ? { clipPath: 'circle(150% at 50% 45%)', opacity: [1, 1, 0] }
+            : { clipPath: 'circle(0% at 50% 45%)', opacity: 1 }
+        }
+        transition={{ duration: 1, delay: 0.25, ease: [0.65, 0.05, 0.35, 1], opacity: { duration: 1, delay: 0.25, times: [0, 0.7, 1] } }}
+        className="absolute inset-0"
+        style={{
+          background: `radial-gradient(circle at 50% 45%, rgb(var(--color-rose) / 0.55), rgb(var(--color-bg)) 55%)`,
+        }}
+      />
 
-      {/* Petal-shaped drift particles once bloomed */}
+      {/* Petal-shaped drift particles blooming outward */}
       {drifters.map((d) => (
         <motion.span
           key={d.key}
@@ -86,8 +70,8 @@ export function PetalBloom() {
               ? { opacity: [0, 1, 0], x: d.x, y: d.y, rotate: d.rotate, scale: [0, 1, 0.7] }
               : { opacity: 0 }
           }
-          transition={{ duration: 1.3, delay: d.delay, ease: 'easeOut' }}
-          className="pointer-events-none absolute left-1/2 top-1/2"
+          transition={{ duration: 1.1, delay: d.delay, ease: 'easeOut' }}
+          className="pointer-events-none absolute left-1/2 top-[45%]"
           style={{
             width: `${d.size}px`,
             height: `${d.size * 1.3}px`,
@@ -104,7 +88,11 @@ export function PetalBloom() {
           className="flex items-center justify-center cursor-pointer focus:outline-none"
           aria-label="Open invitation"
         >
-          <CoverContent opening={opening} />
+          <CoverContent
+            opening={opening}
+            exitAnimation={{ opacity: [1, 1, 0], scale: [1, 1.05, 1.15] }}
+            exitTransition={{ duration: 0.8, delay: 0.15, times: [0, 0.5, 1] }}
+          />
         </button>
       </div>
     </div>

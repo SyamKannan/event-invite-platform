@@ -34,7 +34,7 @@ cd backend
 "/c/Users/Syam/php84/php.exe" artisan migrate:fresh --seed
 ```
 
-This seeds one admin user (email `syamdasks14@gmail.com` — **check `database/seeders/AdminUserSeeder.php` for the current password**, it has been changed at least once outside of any assistant edit) and two demo invitations: `syam-and-swathi` (wedding) and `priyas-30th` (birthday).
+This seeds one admin user (email `syamdasks14@gmail.com` — **check `database/seeders/AdminUserSeeder.php` for the current password**, it has been changed at least once outside of any assistant edit), one demo client user (`client-demo@example.com` / see `database/seeders/ClientUserSeeder.php` for the password), and two demo invitations: `syam-and-swathi` (wedding, owned by the demo client) and `priyas-30th` (birthday, unowned — admin-only). See "Roles & ownership" below before touching auth/invitation-scoping code.
 
 ## Data model (backend/database/migrations)
 
@@ -78,6 +78,23 @@ They can both apply at once (e.g. a "Playful" intensity page using the "Confetti
 
 **Important CSRF/Sanctum gotcha already solved once — don't re-break it:** `bootstrap/app.php` calls `$middleware->statefulApi()`, which routes *every* `api/*` request through Sanctum's `EnsureFrontendRequestsAreStateful` middleware, including the public unauthenticated endpoints. Without the `validateCsrfTokens(except: [...])` exemption for `api/invitations/*`, anonymous RSVP/wish submissions get rejected with `419 CSRF token mismatch`, since they correctly don't send an `X-XSRF-TOKEN` header. If you add another public endpoint, add its path to that `except` array too.
 
+## Roles & ownership — admin vs. client
+
+The `admin/*` API is shared by two roles, both authenticating through the same `POST /api/admin/login` and the same `auth:sanctum` cookie session — they are **not** separate route trees.
+
+- **`admin`** (`users.role = 'admin'`, e.g. the seeded `syamdasks14@gmail.com`) — the platform owner. Full CRUD on every invitation, regardless of who owns it. This is the only role that can create invitations (`InvitationController::store` explicitly checks `$request->user()->isAdmin()`) or reassign an invitation's `owner_id`.
+- **`client`** (`users.role = 'client'`, e.g. the seeded `client-demo@example.com`) — a couple/host the admin builds an invitation for. Scoped to only the invitation(s) where `invitations.owner_id === $user->id`. **View + RSVP/guestbook only** — no editor access, by product decision (content edits stay with the admin for now). This is a deliberate scope cut, not a data-model limitation: `owner_id` already models one-to-many (a client can own multiple invitations), so self-serve editing or self-signup later are additive features, not a rework.
+
+**The enforcement point is `AuthorizesInvitationAccess`** (`backend/app/Http/Controllers/Admin/Concerns/AuthorizesInvitationAccess.php`) — a trait with one method, `authorizeInvitation(Invitation $invitation, User $user)`, called as the first line of every Admin controller method that resolves an `{invitation}` route param (all of `InvitationController@show/update/destroy`, `PersonController`, `ScheduleEventController`, `MilestoneController`, `GalleryImageController`, `UploadController`, `RsvpController`, `WishController`). It throws a `403` unless the user is an admin or owns that specific invitation. **If you add a new nested Admin controller method that takes an `Invitation` route param, you must call `$this->authorizeInvitation($invitation, $request->user())` as its first line, or ownership scoping silently doesn't apply to it.** `InvitationController::index` is the other enforcement point — it filters `Invitation::query()` by `owner_id` for clients instead of using the trait, since there's no single invitation to check yet at that point.
+
+**Frontend role branching:**
+- `context/AdminAuthContext.jsx`'s `user` object now carries `role` (from `GET /api/admin/me`) — this is what every role check reads.
+- `admin/HomeRouter.jsx` is the `/admin` index route: renders `Dashboard.jsx` (admin, full CRUD) or `client/ClientHome.jsx` (client, view-only) based on `user.role`.
+- `client/ClientHome.jsx` skips straight to `/admin/invitations/{id}/rsvps` if the client owns exactly one invitation (the common case — no reason to make them click through a list screen to see their own RSVPs) and falls back to `client/ClientDashboard.jsx` (a card list, same visual language as the admin `Dashboard.jsx` but no "New invitation" button and no "Edit" link) when they own zero or multiple.
+- `InvitationEditor.jsx` checks `user.role === 'client'` **before** firing its data-fetch `useEffect` (not after) and redirects to that invitation's `/rsvps` — checking after the fetch caused clients to get stuck on a permanent "Loading…" screen behind a 403, since the failed fetch never populated `invitation` state for the post-fetch check to even run. If you add another admin-only screen a client shouldn't reach, put the role check ahead of any data fetching, not after it.
+- `RsvpList.jsx`/`WishList.jsx` are reused as-is for both roles (they already scope by the `:id` route param and inherit ownership enforcement for free from the backend) but now catch a `403`/`404` from the list fetch and render "You don't have access to..." instead of leaving an unhandled promise rejection and a silently-empty table — replicate this `.catch()` pattern in any other component that fetches invitation-scoped data.
+- `WishList.jsx`'s delete button is hidden for `role === 'client'` (UI-level only — the backend technically permits a client to delete wishes on their own invitation, which is fine to allow, but the current product decision is not to expose that control yet).
+
 ## Frontend architecture (frontend/src)
 
 ```
@@ -88,15 +105,21 @@ lib/animationPresets.js       → subtle/balanced/playful multiplier tables (see
 pages/InvitationPage.jsx       → fetches one invitation by slug, wraps sections in <ConfigProvider>
 pages/Landing.jsx              → "/" marketing stub, links to /admin/login
 admin/
-  AdminLayout.jsx              → auth-gated shell for all /admin/* routes
-  Login.jsx, Dashboard.jsx     → list/create invitations
-  InvitationEditor.jsx         → tabbed editor: Basics, People, Date & Venue, Schedule, Story, Gallery,
-                                  Theme & Motion, Contact. Active tab lives in the URL (?tab=...) — do
-                                  not go back to plain useState for it, that's what caused saves to
+  AdminLayout.jsx              → auth-gated shell for all /admin/* routes, both roles
+  HomeRouter.jsx                → /admin index route: Dashboard (admin) vs ClientHome (client)
+  Login.jsx, Dashboard.jsx     → admin: list/create invitations (all of them)
+  InvitationEditor.jsx         → admin-only: tabbed editor: Basics, People, Date & Venue, Schedule, Story,
+                                  Gallery, Theme & Motion, Contact. Active tab lives in the URL (?tab=...) —
+                                  do not go back to plain useState for it, that's what caused saves to
                                   appear to "reset" the tab before.
   themePresets.js              → curated palette list for the Theme tab (see Theme presets above)
   MapPicker.jsx                → search + embed + "use this" location picker for Schedule events
-  RsvpList.jsx, WishList.jsx   → read-only views + CSV export / delete
+  RsvpList.jsx, WishList.jsx   → shared by both roles — read-only views + CSV export / delete (delete
+                                  hidden for clients); ownership-scoped for free by the backend
+client/
+  ClientHome.jsx                → client's /admin landing: straight to their one invitation's RSVPs,
+                                  or ClientDashboard.jsx if they own zero/multiple
+  ClientDashboard.jsx           → client: card list of only their own invitation(s), view-only
 App.jsx                        → react-router-dom routes: "/", "/i/:slug", "/admin/*"
 sections/story-layouts/        → 5 layout components (see Story layouts above), dispatched by Story.jsx
 components/, sections/         → mostly UNCHANGED from the original static site — every one calls

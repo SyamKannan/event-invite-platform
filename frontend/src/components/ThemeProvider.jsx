@@ -8,7 +8,7 @@
 // colors leak into the next page you visit, since CSS variables on <html>
 // are global DOM state, not scoped to this component's subtree.
 
-import { useEffect } from 'react';
+import { useLayoutEffect } from 'react';
 import { useConfig } from '../context/ConfigContext.jsx';
 
 // Must match the :root defaults in src/index.css exactly — this is what we
@@ -41,7 +41,13 @@ export function ThemeProvider({ children }) {
   const config = useConfig();
   const theme = config.theme;
 
-  useEffect(() => {
+  // useLayoutEffect (not useEffect) so CSS variables land on <html> before
+  // paint AND before descendant effects run — components like ScratchReveal
+  // read these variables directly in their own mount effect (canvas can't
+  // use CSS vars natively), and effects fire bottom-up on mount, so a plain
+  // useEffect here would run after theirs and they'd read stale/default
+  // colors on every load.
+  useLayoutEffect(() => {
     const root = document.documentElement;
 
     Object.entries(CSS_VAR_BY_KEY).forEach(([key, cssVar]) => {

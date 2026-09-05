@@ -24,11 +24,9 @@ export function CoverContent({ opening, exitAnimation, exitTransition }) {
       }
       className="px-6 text-center"
     >
-      {config.envelope.overline && (
-        <p className="text-[10px] sm:text-xs uppercase tracking-[0.4em] text-fg-soft">
-          {config.envelope.overline}
-        </p>
-      )}
+      <p className="text-[10px] sm:text-xs uppercase tracking-[0.4em] text-fg-soft">
+        {config.envelope.overline || 'You are invited to celebrate'}
+      </p>
 
       <div className="mt-6 flex justify-center">
         <span className="divider-ornament text-accent">✦</span>
@@ -71,7 +69,7 @@ export function CoverContent({ opening, exitAnimation, exitTransition }) {
         className="mt-10 inline-flex items-center gap-2 rounded-full border border-accent/40 bg-accent/10 px-6 py-3 text-sm tracking-wide text-accent shadow-[0_8px_24px_-12px_rgb(var(--color-accent)/0.5)] backdrop-blur-sm"
       >
         <Mail size={16} />
-        {config.envelope.cta}
+        {config.envelope.cta || 'Open Invitation'}
       </motion.div>
     </motion.div>
   );
