@@ -38,7 +38,7 @@ class InvitationSeeder extends Seeder
             'envelope_cta' => 'Open Invitation',
             'envelope_animation' => 'swing-doors',
             'music_enabled' => true,
-            'music_src' => '/audio/ambient.mp3',
+            'music_src' => '/audio/ambient.wav',
             'contact_phone_primary' => '+91 98000 00000',
             'contact_phone_secondary' => '+91 98111 11111',
             'contact_email' => 'hello@example.com',

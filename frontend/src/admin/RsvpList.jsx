@@ -3,15 +3,17 @@
 
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Download } from 'lucide-react';
-import { adminExportRsvps, adminListRsvps } from '../lib/api.js';
+import { ArrowLeft, Check, Copy, Download, ExternalLink } from 'lucide-react';
+import { adminExportRsvps, adminGetInvitation, adminListRsvps } from '../lib/api.js';
 import { useAdminAuth } from '../context/AdminAuthContext.jsx';
 
 export default function RsvpList() {
   const { id } = useParams();
   const { user } = useAdminAuth();
   const [rsvps, setRsvps] = useState(null);
+  const [invitation, setInvitation] = useState(null);
   const [forbidden, setForbidden] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     setRsvps(null);
@@ -21,10 +23,18 @@ export default function RsvpList() {
       .catch((err) => {
         if (err.status === 403 || err.status === 404) setForbidden(true);
       });
+    adminGetInvitation(id).then(setInvitation).catch(() => {});
   }, [id]);
 
   const accepted = rsvps?.filter((r) => r.choice === 'accept') ?? [];
   const totalGuests = accepted.reduce((sum, r) => sum + r.guest_count, 0);
+  const shareUrl = invitation ? `${window.location.origin}/i/${invitation.slug}` : null;
+
+  function copyLink() {
+    navigator.clipboard.writeText(shareUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   return (
     <div>
@@ -32,7 +42,31 @@ export default function RsvpList() {
         <ArrowLeft size={14} /> {user.role === 'client' ? 'Back' : 'Back to dashboard'}
       </Link>
 
-      <div className="mt-3 flex items-center justify-between">
+      {!forbidden && shareUrl && (
+        <div className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-accent/20 bg-surface px-5 py-4">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs uppercase tracking-[0.2em] text-fg-soft">Your invitation link</p>
+            <p className="mt-1 truncate text-sm text-ink">{shareUrl}</p>
+          </div>
+          <button
+            type="button"
+            onClick={copyLink}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-accent/30 px-4 py-2 text-xs uppercase tracking-[0.15em] text-ink transition hover:bg-accent/10"
+          >
+            {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'Copied' : 'Copy Link'}
+          </button>
+          <a
+            href={shareUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-xs uppercase tracking-[0.15em] text-white transition hover:bg-gold"
+          >
+            <ExternalLink size={14} /> Share with guests
+          </a>
+        </div>
+      )}
+
+      <div className="mt-6 flex items-center justify-between">
         <h1 className="font-display text-3xl">RSVPs</h1>
         {!forbidden && (
           <button
