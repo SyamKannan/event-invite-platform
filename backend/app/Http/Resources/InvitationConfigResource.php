@@ -190,6 +190,20 @@ class InvitationConfigResource extends JsonResource
             return $path;
         }
 
-        return Storage::disk(config('filesystems.uploads_disk', 'public'))->url($path);
+        $disk = config('filesystems.uploads_disk', 'public');
+
+        // The 'public' disk's url() reads APP_URL directly rather than the
+        // current request's actual host — on Railway, APP_URL (or whatever
+        // Storage derives it from) resolves to the *.railway.internal
+        // hostname, which is unreachable from any browser. asset() instead
+        // reflects the real inbound request host (correctly, once Laravel
+        // trusts Railway's proxy — see bootstrap/app.php). Only a real
+        // remote disk like R2 needs Storage::url(), since its URL is a
+        // fixed public address unrelated to the current request.
+        if ($disk === 'public') {
+            return asset('storage/'.$path);
+        }
+
+        return Storage::disk($disk)->url($path);
     }
 }

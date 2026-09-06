@@ -36,9 +36,16 @@ class UploadController extends Controller
         $disk = config('filesystems.uploads_disk', 'public');
         $path = $request->file('file')->store("invitations/{$invitation->slug}/{$type}s", $disk);
 
+        // The 'public' disk's url() reads APP_URL directly, which on Railway
+        // resolves to an unreachable *.railway.internal hostname rather than
+        // the real public domain — asset() correctly reflects the actual
+        // inbound request host instead. Only a real remote disk like R2
+        // needs Storage::url(), since its URL is a fixed public address.
+        $url = $disk === 'public' ? asset('storage/'.$path) : Storage::disk($disk)->url($path);
+
         return response()->json([
             'path' => $path,
-            'url' => Storage::disk($disk)->url($path),
+            'url' => $url,
         ], 201);
     }
 }
