@@ -15,7 +15,7 @@ export function FloatingHearts() {
   const decor = config.floatingDecor;
   if (!decor || !decor.enabled || decor.count <= 0) return null;
 
-  const { floatingDecorMultiplier } = getAnimationPreset(config.animationIntensity);
+  const { floatingDecorMultiplier, speedMultiplier } = getAnimationPreset(config.animationIntensity);
   const count = Math.max(0, Math.round(decor.count * floatingDecorMultiplier));
 
   // Build an array of N items, each with random visual properties.
@@ -25,7 +25,7 @@ export function FloatingHearts() {
     return {
       symbol,
       left: Math.random() * 100,           // 0–100% across the screen
-      duration: 12 + Math.random() * 14,   // 12–26s to cross the screen
+      duration: (12 + Math.random() * 14) * speedMultiplier, // 12–26s to cross the screen, scaled by intensity
       delay: Math.random() * 18,           // start time offset
       size: 14 + Math.random() * 18,       // 14–32px font size
       opacity: 0.25 + Math.random() * 0.45,

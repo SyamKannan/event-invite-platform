@@ -24,7 +24,7 @@ export function Hero() {
   const config = useConfig();
   const { couple, celebrant, hero, display } = config;
   const isBirthday = config.type === 'birthday';
-  const { particleMultiplier } = getAnimationPreset(config.animationIntensity);
+  const { particleMultiplier, speedMultiplier } = getAnimationPreset(config.animationIntensity);
   const petalCount = Math.max(0, Math.round(18 * particleMultiplier));
 
   // The envelope cover (when enabled) sits on top of the page until tapped,
@@ -55,14 +55,14 @@ export function Hero() {
       Array.from({ length: petalCount }).map((_, i) => ({
         id: i,
         left: Math.random() * 100,
-        duration: 8 + Math.random() * 10,
+        duration: (8 + Math.random() * 10) * speedMultiplier,
         delay: Math.random() * 14,
         size: 10 + Math.random() * 14,
         drift: (Math.random() - 0.5) * 80,
         rotate: Math.random() * 720,
         opacity: 0.3 + Math.random() * 0.4,
       })),
-    [petalCount],
+    [petalCount, speedMultiplier],
   );
 
   // Ambient bokeh orbs for depth.
