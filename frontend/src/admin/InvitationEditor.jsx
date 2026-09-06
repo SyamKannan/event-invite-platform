@@ -145,9 +145,9 @@ function SavedToast({ visible }) {
 
 function Field({ label, children }) {
   return (
-    <label className="block">
+    <label className="block min-w-0">
       <span className="text-xs uppercase tracking-[0.2em] text-fg-soft">{label}</span>
-      <div className="mt-2">{children}</div>
+      <div className="mt-2 min-w-0">{children}</div>
     </label>
   );
 }
@@ -168,8 +168,8 @@ function SaveButton({ children = 'Save' }) {
 function PhotoField({ label = 'Photo', path, onUpload }) {
   return (
     <Field label={label}>
-      <div className="flex items-center gap-3">
-        {path && <span className="truncate text-xs text-fg-soft">{path}</span>}
+      <div className="flex min-w-0 items-center gap-3">
+        {path && <span className="min-w-0 flex-1 truncate text-xs text-fg-soft" title={path}>{path}</span>}
         <label className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-accent/30 px-3 py-1.5 text-xs uppercase tracking-[0.15em] text-fg-soft transition hover:bg-accent/10 hover:text-accent">
           <Upload size={12} /> Upload
           <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files[0] && onUpload(e.target.files[0])} />
@@ -182,8 +182,8 @@ function PhotoField({ label = 'Photo', path, onUpload }) {
 function AudioField({ label = 'Audio file', path, onUpload }) {
   return (
     <Field label={label}>
-      <div className="flex items-center gap-3">
-        {path && <span className="truncate text-xs text-fg-soft">{path}</span>}
+      <div className="flex min-w-0 items-center gap-3">
+        {path && <span className="min-w-0 flex-1 truncate text-xs text-fg-soft" title={path}>{path}</span>}
         <label className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-accent/30 px-3 py-1.5 text-xs uppercase tracking-[0.15em] text-fg-soft transition hover:bg-accent/10 hover:text-accent">
           <Upload size={12} /> Upload MP3
           <input type="file" accept="audio/*" className="hidden" onChange={(e) => e.target.files[0] && onUpload(e.target.files[0])} />
@@ -415,7 +415,7 @@ function PeopleTab({ invitation, onSaved }) {
     <form onSubmit={handleSubmit} className="grid max-w-2xl gap-6">
       {isWedding ? (
         <div className="grid gap-6 sm:grid-cols-2">
-          <fieldset className={`grid gap-3 rounded-2xl border border-accent/15 p-4 transition-opacity ${form.showBride ? '' : 'opacity-50'}`}>
+          <fieldset className={`grid min-w-0 gap-3 rounded-2xl border border-accent/15 p-4 transition-opacity ${form.showBride ? '' : 'opacity-50'}`}>
             <legend className="flex items-center gap-2 px-1 text-xs uppercase tracking-[0.2em] text-accent">
               <label className="flex items-center gap-1.5 normal-case tracking-normal text-fg-soft">
                 <input type="checkbox" checked={form.showBride} onChange={(e) => setForm((f) => ({ ...f, showBride: e.target.checked }))} className="h-3.5 w-3.5" />
@@ -427,7 +427,7 @@ function PeopleTab({ invitation, onSaved }) {
             <Field label="Parents text"><input value={form.brideParents} onChange={set('brideParents')} className={inputClass} /></Field>
             <PhotoField path={form.bridePhoto} onUpload={(f) => handleUpload('bridePhoto', f)} />
           </fieldset>
-          <fieldset className={`grid gap-3 rounded-2xl border border-accent/15 p-4 transition-opacity ${form.showGroom ? '' : 'opacity-50'}`}>
+          <fieldset className={`grid min-w-0 gap-3 rounded-2xl border border-accent/15 p-4 transition-opacity ${form.showGroom ? '' : 'opacity-50'}`}>
             <legend className="flex items-center gap-2 px-1 text-xs uppercase tracking-[0.2em] text-accent">
               <label className="flex items-center gap-1.5 normal-case tracking-normal text-fg-soft">
                 <input type="checkbox" checked={form.showGroom} onChange={(e) => setForm((f) => ({ ...f, showGroom: e.target.checked }))} className="h-3.5 w-3.5" />
