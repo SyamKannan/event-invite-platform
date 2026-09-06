@@ -603,8 +603,12 @@ function StoryTab({ invitation, onChange, onSaved }) {
   }
 
   async function handleAdd() {
+    // No x/y here — the constellation layout auto-spaces milestones that
+    // lack coordinates (see ConstellationLayout.jsx). Sending a fixed
+    // default like 50/50 for every new milestone made them all stack on
+    // the same spot instead of spreading out.
     const created = await adminCreateMilestone(invitation.id, {
-      x: 50, y: 50, date_label: 'Date', title: 'New milestone',
+      date_label: 'Date', title: 'New milestone',
     });
     setMilestones((ms) => [...ms, created]);
   }

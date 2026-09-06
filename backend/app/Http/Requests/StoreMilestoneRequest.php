@@ -17,8 +17,8 @@ class StoreMilestoneRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'x' => ['required', 'integer', 'min:0', 'max:100'],
-            'y' => ['required', 'integer', 'min:0', 'max:100'],
+            'x' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'y' => ['nullable', 'integer', 'min:0', 'max:100'],
             'date_label' => ['required', 'string', 'max:60'],
             'title' => ['required', 'string', 'max:80'],
             'description' => ['nullable', 'string', 'max:1000'],

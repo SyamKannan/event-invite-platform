@@ -106,7 +106,11 @@ class InvitationConfigResource extends JsonResource
                     : null,
                 'events' => $this->scheduleEvents->map(fn ($e) => [
                     'id' => (string) $e->id,
-                    'team' => $e->team,
+                    // Lowercased to match the 'groom'/'bride' tab ids above —
+                    // the admin's "Team" field is free text, so an admin
+                    // typing "Groom" (capitalized) would otherwise never
+                    // match the tab and the event would silently vanish.
+                    'team' => $e->team ? strtolower($e->team) : null,
                     'title' => $e->title,
                     'date' => $e->event_date->toDateString(),
                     'time' => $e->event_time,
@@ -148,7 +152,7 @@ class InvitationConfigResource extends JsonResource
 
             'music' => [
                 'enabled' => (bool) $detail?->music_enabled,
-                'src' => $detail?->music_src,
+                'src' => $this->photoUrl($detail?->music_src),
                 'title' => 'Background music',
                 'autoplay' => false,
             ],
