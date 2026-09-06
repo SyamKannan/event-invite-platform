@@ -16,7 +16,7 @@ export default function Landing() {
         <Heart size={40} className="mx-auto text-accent" fill="currentColor" />
         <h1 className="mt-6 font-script text-5xl text-accent">Invitations</h1>
         <p className="mt-3 max-w-sm text-fg-soft">
-          Beautiful, animated wedding and birthday invitations — one link per celebration.
+       Invite your intimates, and make every moment memorable.
         </p>
         <Link
           to="/admin/login"
