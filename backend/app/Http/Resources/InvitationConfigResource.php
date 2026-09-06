@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Shapes an Invitation (with its relations eager-loaded) into the same JSON
@@ -185,6 +186,10 @@ class InvitationConfigResource extends JsonResource
             return null;
         }
 
-        return str_starts_with($path, 'http') ? $path : asset('storage/'.$path);
+        if (str_starts_with($path, 'http')) {
+            return $path;
+        }
+
+        return Storage::disk(config('filesystems.uploads_disk', 'public'))->url($path);
     }
 }

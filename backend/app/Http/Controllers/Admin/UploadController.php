@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Invitation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class UploadController extends Controller
 {
@@ -28,11 +29,16 @@ class UploadController extends Controller
                 : ['required', 'image', 'max:8192'],
         ]);
 
-        $path = $request->file('file')->store("invitations/{$invitation->slug}/{$type}s", 'public');
+        // UPLOADS_DISK lets production point uploads at a durable disk (e.g.
+        // Cloudflare R2 via the 'r2' disk) instead of the container's local
+        // disk, which Railway wipes on every deploy. Local dev leaves this
+        // unset and keeps using 'public' as before.
+        $disk = config('filesystems.uploads_disk', 'public');
+        $path = $request->file('file')->store("invitations/{$invitation->slug}/{$type}s", $disk);
 
         return response()->json([
             'path' => $path,
-            'url' => asset('storage/'.$path),
+            'url' => Storage::disk($disk)->url($path),
         ], 201);
     }
 }
