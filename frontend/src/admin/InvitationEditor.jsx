@@ -683,7 +683,11 @@ function GalleryTab({ invitation, onChange, onSaved }) {
 
   async function handleUpload(file) {
     const { path } = await adminUploadFile(invitation.id, file, 'image');
-    const created = await adminCreateGalleryImage(invitation.id, { image: path, alt: file.name });
+    // Default alt text stays generic rather than the raw uploaded filename
+    // (e.g. "WhatsApp Image 2026-...jpeg") — the admin can still personalize
+    // it via the alt field below, but nothing filename-shaped should be the
+    // fallback on a client-facing page.
+    const created = await adminCreateGalleryImage(invitation.id, { image: path, alt: 'Gallery photo' });
     setImages((imgs) => [...imgs, created]);
     onSaved?.();
   }

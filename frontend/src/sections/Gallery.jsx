@@ -77,10 +77,6 @@ export function Gallery() {
               className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-            {/* Caption on hover */}
-            <p className="absolute bottom-0 inset-x-0 px-3 pb-2 text-xs text-white/90 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-left">
-              {img.alt}
-            </p>
           </motion.button>
         ))}
       </div>
@@ -115,9 +111,6 @@ function PolaroidCard({ img, tilt, onClick, delay }) {
         loading="lazy"
         className="h-28 w-full object-cover"
       />
-      <p className="mt-2 text-center font-script text-base text-muted leading-tight truncate px-1">
-        {img.alt}
-      </p>
     </motion.button>
   );
 }
@@ -204,10 +197,6 @@ function Lightbox({ images, index, onClose, onChange }) {
               alt={images[index].alt}
               className="max-h-[80vh] max-w-[88vw] rounded-lg object-contain shadow-2xl"
             />
-            {/* Caption below the photo */}
-            <p className="text-xs uppercase tracking-[0.25em] text-white/60">
-              {images[index].alt}
-            </p>
           </motion.div>
         </motion.div>
       )}
