@@ -98,11 +98,16 @@ class InvitationConfigResource extends JsonResource
                 'enabled' => $this->scheduleEvents->isNotEmpty(),
                 'title' => $isWedding ? 'The Celebration' : 'Party Details',
                 'subtitle' => $isWedding ? 'Join us across these moments' : 'We would love to see you there',
-                'tabs' => $isWedding && $this->scheduleEvents->pluck('team')->filter()->isNotEmpty()
-                    ? [
+                // Only show a side's tab when at least one event is actually
+                // assigned to it — a lone Groom-side event shouldn't produce
+                // a Bride Side tab that just leads to an empty list.
+                'tabs' => $isWedding
+                    ? collect([
                         ['id' => 'groom', 'label' => 'Groom Side'],
                         ['id' => 'bride', 'label' => 'Bride Side'],
-                    ]
+                    ])->filter(fn ($tab) => $this->scheduleEvents->contains(
+                        fn ($e) => $e->team && strtolower($e->team) === $tab['id']
+                    ))->values()->all() ?: null
                     : null,
                 'events' => $this->scheduleEvents->map(fn ($e) => [
                     'id' => (string) $e->id,
