@@ -183,7 +183,12 @@ export async function adminUploadFile(invitationId, file, kind = 'image') {
     body: formData,
   });
 
-  if (!res.ok) throw new Error('Upload failed');
+  if (!res.ok) {
+    const payload = await res.json().catch(() => null);
+    const error = new Error(payload?.message || 'Upload failed');
+    error.status = res.status;
+    throw error;
+  }
   return res.json();
 }
 
@@ -204,7 +209,11 @@ export async function adminExportRsvps(invitationId) {
   const res = await fetch(`${API_BASE}/api/admin/invitations/${invitationId}/rsvps/export`, {
     headers: { Authorization: `Bearer ${getAdminToken()}` },
   });
-  if (!res.ok) throw new Error('Export failed');
+  if (!res.ok) {
+    const error = new Error('Export failed');
+    error.status = res.status;
+    throw error;
+  }
 
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);

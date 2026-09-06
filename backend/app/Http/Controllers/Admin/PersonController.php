@@ -25,6 +25,7 @@ class PersonController extends Controller
     {
         $this->authorizeInvitation($invitation, $request->user());
 
+        $person = $invitation->people()->findOrFail($person->id);
         $person->update($request->validated());
 
         return $person;
@@ -34,7 +35,7 @@ class PersonController extends Controller
     {
         $this->authorizeInvitation($invitation, $request->user());
 
-        $person->delete();
+        $invitation->people()->whereKey($person->id)->firstOrFail()->delete();
 
         return response()->json(status: 204);
     }

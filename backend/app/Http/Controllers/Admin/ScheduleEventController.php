@@ -25,6 +25,7 @@ class ScheduleEventController extends Controller
     {
         $this->authorizeInvitation($invitation, $request->user());
 
+        $scheduleEvent = $invitation->scheduleEvents()->findOrFail($scheduleEvent->id);
         $scheduleEvent->update($request->validated());
 
         return $scheduleEvent;
@@ -34,7 +35,7 @@ class ScheduleEventController extends Controller
     {
         $this->authorizeInvitation($invitation, $request->user());
 
-        $scheduleEvent->delete();
+        $invitation->scheduleEvents()->whereKey($scheduleEvent->id)->firstOrFail()->delete();
 
         return response()->json(status: 204);
     }

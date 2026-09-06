@@ -25,6 +25,7 @@ class GalleryImageController extends Controller
     {
         $this->authorizeInvitation($invitation, $request->user());
 
+        $galleryImage = $invitation->galleryImages()->findOrFail($galleryImage->id);
         $galleryImage->update($request->validated());
 
         return $galleryImage;
@@ -34,7 +35,7 @@ class GalleryImageController extends Controller
     {
         $this->authorizeInvitation($invitation, $request->user());
 
-        $galleryImage->delete();
+        $invitation->galleryImages()->whereKey($galleryImage->id)->firstOrFail()->delete();
 
         return response()->json(status: 204);
     }

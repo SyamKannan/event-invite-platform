@@ -25,6 +25,7 @@ class MilestoneController extends Controller
     {
         $this->authorizeInvitation($invitation, $request->user());
 
+        $milestone = $invitation->milestones()->findOrFail($milestone->id);
         $milestone->update($request->validated());
 
         return $milestone;
@@ -34,7 +35,7 @@ class MilestoneController extends Controller
     {
         $this->authorizeInvitation($invitation, $request->user());
 
-        $milestone->delete();
+        $invitation->milestones()->whereKey($milestone->id)->firstOrFail()->delete();
 
         return response()->json(status: 204);
     }
