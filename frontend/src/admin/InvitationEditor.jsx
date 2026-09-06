@@ -246,7 +246,7 @@ function OwnerSection({ invitation, onSaved }) {
   const [clients, setClients] = useState(null);
   const [selectedId, setSelectedId] = useState(invitation.owner_id || '');
   const [creatingNew, setCreatingNew] = useState(false);
-  const [newClient, setNewClient] = useState({ name: '', email: '', password: '' });
+  const [newClient, setNewClient] = useState({ name: '', username: '', email: '', password: '' });
   const [error, setError] = useState(null);
   const [saved, setSaved] = useState(false);
 
@@ -280,10 +280,10 @@ function OwnerSection({ invitation, onSaved }) {
       setClients((list) => [...(list || []), client]);
       setSelectedId(client.id);
       setCreatingNew(false);
-      setNewClient({ name: '', email: '', password: '' });
+      setNewClient({ name: '', username: '', email: '', password: '' });
       await assignOwner(client.id);
     } catch (err) {
-      setError(err.errors?.email?.[0] || err.message || 'Failed to create client.');
+      setError(err.errors?.username?.[0] || err.errors?.email?.[0] || err.message || 'Failed to create client.');
     }
   }
 
@@ -301,7 +301,7 @@ function OwnerSection({ invitation, onSaved }) {
           <select value={selectedId} onChange={handleSelectChange} className={inputClass}>
             <option value="">— No owner (admin-only) —</option>
             {clients.map((c) => (
-              <option key={c.id} value={c.id}>{c.name} ({c.email})</option>
+              <option key={c.id} value={c.id}>{c.name} (@{c.username})</option>
             ))}
           </select>
           {saved && <span className="text-sm text-accent">Saved ✓</span>}
@@ -325,12 +325,22 @@ function OwnerSection({ invitation, onSaved }) {
               className={inputClass}
             />
           </Field>
-          <Field label="Client email">
+          <Field label="Username (used to log in)">
+            <input
+              type="text"
+              value={newClient.username}
+              onChange={(e) => setNewClient((c) => ({ ...c, username: e.target.value }))}
+              required
+              autoCapitalize="none"
+              autoCorrect="off"
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Email (optional, for your own reference)">
             <input
               type="email"
               value={newClient.email}
               onChange={(e) => setNewClient((c) => ({ ...c, email: e.target.value }))}
-              required
               className={inputClass}
             />
           </Field>

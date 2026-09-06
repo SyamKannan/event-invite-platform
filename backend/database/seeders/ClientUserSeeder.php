@@ -12,7 +12,7 @@ class ClientUserSeeder extends Seeder
     {
         $client = User::query()->updateOrCreate(
             ['email' => 'client-demo@example.com'],
-            ['name' => 'Syam & Swathi', 'password' => 'clientpass123', 'role' => 'client'],
+            ['name' => 'Syam & Swathi', 'username' => 'syam-swathi', 'password' => 'clientpass123', 'role' => 'client'],
         );
 
         Invitation::query()

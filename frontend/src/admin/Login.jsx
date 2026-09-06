@@ -1,4 +1,4 @@
-// ADMIN LOGIN — email/password against Laravel Sanctum's SPA cookie auth.
+// ADMIN LOGIN — username/password, exchanged for a Sanctum bearer token.
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -8,7 +8,7 @@ import { adminLogin } from '../lib/api.js';
 
 export default function Login() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -18,10 +18,10 @@ export default function Login() {
     setSubmitting(true);
     setError(null);
     try {
-      await adminLogin(email, password);
+      await adminLogin(username, password);
       navigate('/admin');
     } catch (err) {
-      setError(err.status === 422 ? 'Incorrect email or password.' : err.message || 'Login failed.');
+      setError(err.status === 422 ? 'Incorrect username or password.' : err.message || 'Login failed.');
     } finally {
       setSubmitting(false);
     }
@@ -42,13 +42,15 @@ export default function Login() {
         </div>
 
         <label className="mt-8 block">
-          <span className="text-xs uppercase tracking-[0.25em] text-muted">Email</span>
+          <span className="text-xs uppercase tracking-[0.25em] text-muted">Username</span>
           <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
             required
             autoFocus
+            autoCapitalize="none"
+            autoCorrect="off"
             className="mt-2 w-full rounded-xl border border-ink/15 bg-white px-4 py-3 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30"
           />
         </label>

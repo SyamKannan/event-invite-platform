@@ -68,8 +68,8 @@ export function postWish(slug, payload) {
 
 // ---------- Admin (Sanctum-authenticated) ------------------------------------
 
-export async function adminLogin(email, password) {
-  const { user, token } = await request('/api/admin/login', { method: 'POST', body: { email, password } });
+export async function adminLogin(username, password) {
+  const { user, token } = await request('/api/admin/login', { method: 'POST', body: { username, password } });
   setAdminToken(token);
   return user;
 }

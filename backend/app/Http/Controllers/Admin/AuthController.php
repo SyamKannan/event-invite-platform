@@ -14,16 +14,16 @@ class AuthController extends Controller
     public function login(Request $request): JsonResponse
     {
         $credentials = $request->validate([
-            'email' => ['required', 'email'],
+            'username' => ['required', 'string'],
             'password' => ['required', 'string'],
         ]);
 
         /** @var User|null $user */
-        $user = User::where('email', $credentials['email'])->first();
+        $user = User::where('username', $credentials['username'])->first();
 
-        if (! $user || ! Auth::getProvider()->validateCredentials($user, $credentials)) {
+        if (! $user || ! Auth::getProvider()->validateCredentials($user, ['password' => $credentials['password']])) {
             throw ValidationException::withMessages([
-                'email' => ['These credentials do not match our records.'],
+                'username' => ['These credentials do not match our records.'],
             ]);
         }
 
@@ -55,6 +55,7 @@ class AuthController extends Controller
         return [
             'id' => $user->id,
             'name' => $user->name,
+            'username' => $user->username,
             'email' => $user->email,
             'role' => $user->role,
         ];
