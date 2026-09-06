@@ -13,6 +13,19 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Railway (and most PaaS hosts) terminate TLS at their edge and
+        // forward plain HTTP to the container, setting X-Forwarded-Proto.
+        // Without trusting that header, asset()/url() helpers can't tell
+        // the original request was HTTPS and generate http:// URLs (e.g.
+        // storage image links), which the browser then blocks as mixed
+        // content on an https:// page. Trusting all proxies is safe here
+        // because Railway's edge is the only thing that can reach this
+        // container directly.
+        $middleware->trustProxies(at: '*', headers: Request::HEADER_X_FORWARDED_FOR
+            | Request::HEADER_X_FORWARDED_HOST
+            | Request::HEADER_X_FORWARDED_PORT
+            | Request::HEADER_X_FORWARDED_PROTO);
+
         $middleware->statefulApi();
 
         // Public invitation endpoints (RSVP, wishes) are read/written by

@@ -13,7 +13,7 @@
 //   6. Three scratch-off coins that hide the date
 //   7. Bouncing scroll-down arrow
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { ChevronDown, Heart } from 'lucide-react';
 import { useConfig } from '../context/ConfigContext.jsx';
@@ -26,6 +26,20 @@ export function Hero() {
   const isBirthday = config.type === 'birthday';
   const { particleMultiplier } = getAnimationPreset(config.animationIntensity);
   const petalCount = Math.max(0, Math.round(18 * particleMultiplier));
+
+  // The envelope cover (when enabled) sits on top of the page until tapped,
+  // but its own name-reveal animation runs independently of Hero's — without
+  // this gate, Hero's AnimatedName plays immediately on mount, in the same
+  // screen position as the still-visible envelope's names, and the two
+  // double-expose each other. Wait for the 'envelope:opened' event (already
+  // dispatched by useEnvelopeOpen.js for MusicToggle) before revealing.
+  const [nameRevealReady, setNameRevealReady] = useState(!config.envelope.enabled);
+  useEffect(() => {
+    if (!config.envelope.enabled) return;
+    const onOpened = () => setNameRevealReady(true);
+    window.addEventListener('envelope:opened', onOpened);
+    return () => window.removeEventListener('envelope:opened', onOpened);
+  }, [config.envelope.enabled]);
 
   const { scrollY } = useScroll();
   const bgShift = useTransform(scrollY, [0, 800], [0, 200]);
@@ -138,9 +152,11 @@ export function Hero() {
         transition={{ duration: 80, repeat: Infinity, ease: 'linear' }}
       />
 
-      {/* Content */}
+      {/* Content — withheld until the envelope cover (if any) has been
+          opened, so its name-reveal animation doesn't double-expose with
+          the envelope's own names while the cover is still on screen. */}
       <div className="relative mx-auto max-w-3xl px-6 text-center">
-        {hero.overline && (
+        {nameRevealReady && hero.overline && (
           <motion.p
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -152,7 +168,7 @@ export function Hero() {
         )}
 
         <h1 className="mt-8 font-display text-5xl leading-[0.95] text-fg sm:text-7xl md:text-8xl">
-          {isBirthday ? (
+          {nameRevealReady && (isBirthday ? (
             <>
               <AnimatedName name={celebrant?.firstName} delay={0.4} />
               {celebrant?.turningText && (
@@ -181,18 +197,20 @@ export function Hero() {
               )}
               {couple.groom && <AnimatedName name={couple.groom.firstName} delay={couple.bride ? 1.1 : 0.4} />}
             </>
-          )}
+          ))}
         </h1>
 
         {/* Animated divider line */}
-        <motion.div
-          initial={{ scaleX: 0, opacity: 0 }}
-          animate={{ scaleX: 1, opacity: 1 }}
-          transition={{ duration: 1, delay: 1.7, ease: [0.22, 1, 0.36, 1] }}
-          className="mx-auto mt-6 h-px w-40 origin-center bg-gradient-to-r from-transparent via-accent/70 to-transparent"
-        />
+        {nameRevealReady && (
+          <motion.div
+            initial={{ scaleX: 0, opacity: 0 }}
+            animate={{ scaleX: 1, opacity: 1 }}
+            transition={{ duration: 1, delay: 1.7, ease: [0.22, 1, 0.36, 1] }}
+            className="mx-auto mt-6 h-px w-40 origin-center bg-gradient-to-r from-transparent via-accent/70 to-transparent"
+          />
+        )}
 
-        {hero.tagline && (
+        {nameRevealReady && hero.tagline && (
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
