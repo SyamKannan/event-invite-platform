@@ -221,46 +221,50 @@ export function Hero() {
           </motion.p>
         )}
 
-        <motion.div
-          initial={{ opacity: 0, scale: 0 }}
-          animate={{ opacity: 1, scale: [1, 1.15, 1] }}
-          transition={{
-            opacity: { duration: 0.6, delay: 2 },
-            scale: { duration: 1.6, repeat: Infinity, ease: 'easeInOut', delay: 2 },
-          }}
-          className="mt-4 flex justify-center text-accent"
-        >
-          <Heart size={20} fill="currentColor" />
-        </motion.div>
+        {nameRevealReady && (
+          <>
+            <motion.div
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{ opacity: 1, scale: [1, 1.15, 1] }}
+              transition={{
+                opacity: { duration: 0.6, delay: 2 },
+                scale: { duration: 1.6, repeat: Infinity, ease: 'easeInOut', delay: 2 },
+              }}
+              className="mt-4 flex justify-center text-accent"
+            >
+              <Heart size={20} fill="currentColor" />
+            </motion.div>
 
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8, delay: 2.2 }}
-          className="mt-8 text-xs uppercase tracking-[0.3em] text-fg-soft"
-        >
-          Scratch to discover the date
-        </motion.p>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.8, delay: 2.2 }}
+              className="mt-8 text-xs uppercase tracking-[0.3em] text-fg-soft"
+            >
+              Scratch to discover the date
+            </motion.p>
 
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 2.4 }}
-          className="mt-5 flex items-end justify-center gap-5"
-        >
-          <ScratchCoin value={day} label="Day" />
-          <ScratchCoin value={monthShort} label="Month" />
-          <ScratchCoin value={year} label="Year" />
-        </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 2.4 }}
+              className="mt-5 flex items-end justify-center gap-5"
+            >
+              <ScratchCoin value={day} label="Day" />
+              <ScratchCoin value={monthShort} label="Month" />
+              <ScratchCoin value={year} label="Year" />
+            </motion.div>
 
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1, delay: 2.8 }}
-          className="mt-8 text-xs uppercase tracking-[0.3em] text-fg-soft"
-        >
-          {display.location}
-        </motion.p>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 1, delay: 2.8 }}
+              className="mt-8 text-xs uppercase tracking-[0.3em] text-fg-soft"
+            >
+              {display.location}
+            </motion.p>
+          </>
+        )}
       </div>
 
       <motion.a
