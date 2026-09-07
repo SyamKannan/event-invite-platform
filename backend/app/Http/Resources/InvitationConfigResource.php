@@ -2,9 +2,9 @@
 
 namespace App\Http\Resources;
 
+use App\Support\StoredFileUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Shapes an Invitation (with its relations eager-loaded) into the same JSON
@@ -190,20 +190,6 @@ class InvitationConfigResource extends JsonResource
             return $path;
         }
 
-        $disk = config('filesystems.uploads_disk', 'public');
-
-        // The 'public' disk's url() reads APP_URL directly rather than the
-        // current request's actual host — on Railway, APP_URL (or whatever
-        // Storage derives it from) resolves to the *.railway.internal
-        // hostname, which is unreachable from any browser. asset() instead
-        // reflects the real inbound request host (correctly, once Laravel
-        // trusts Railway's proxy — see bootstrap/app.php). Only a real
-        // remote disk like R2 needs Storage::url(), since its URL is a
-        // fixed public address unrelated to the current request.
-        if ($disk === 'public') {
-            return asset('storage/'.$path);
-        }
-
-        return Storage::disk($disk)->url($path);
+        return StoredFileUrl::for($path);
     }
 }
