@@ -4,8 +4,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Cake, ExternalLink, Heart, MessageSquare, Plus, Users } from 'lucide-react';
+import { Cake, ExternalLink, Heart, MessageSquare, Plus, Share2, Users } from 'lucide-react';
 import { adminCreateInvitation, adminListInvitations } from '../lib/api.js';
+import { whatsappShareUrl } from '../lib/share.js';
 
 export default function Dashboard() {
   const [invitations, setInvitations] = useState(null);
@@ -119,6 +120,14 @@ export default function Dashboard() {
               >
                 <MessageSquare size={12} /> Wishes
               </Link>
+              <a
+                href={whatsappShareUrl(inv.slug)}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 rounded-full border border-accent/30 px-4 py-1.5 text-xs uppercase tracking-[0.15em] text-ink transition hover:bg-accent/10"
+              >
+                <Share2 size={12} /> Share
+              </a>
               <a
                 href={`/i/${inv.slug}`}
                 target="_blank"

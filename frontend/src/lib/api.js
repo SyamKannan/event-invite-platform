@@ -169,6 +169,10 @@ export function adminDeleteGalleryImage(invitationId, imageId) {
   return request(`/api/admin/invitations/${invitationId}/gallery-images/${imageId}`, { method: 'DELETE', auth: true });
 }
 
+export function adminReorderGalleryImages(invitationId, orderedIds) {
+  return request(`/api/admin/invitations/${invitationId}/gallery-images/reorder`, { method: 'PUT', body: { ordered_ids: orderedIds }, auth: true });
+}
+
 export async function adminUploadFile(invitationId, file, kind = 'image') {
   const formData = new FormData();
   formData.append('file', file);

@@ -50,6 +50,7 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function (): void {
         Route::delete('milestones/{milestone}', [MilestoneController::class, 'destroy']);
 
         Route::post('gallery-images', [GalleryImageController::class, 'store']);
+        Route::put('gallery-images/reorder', [GalleryImageController::class, 'reorder']);
         Route::put('gallery-images/{galleryImage}', [GalleryImageController::class, 'update']);
         Route::delete('gallery-images/{galleryImage}', [GalleryImageController::class, 'destroy']);
 

@@ -11,12 +11,15 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, Check, MapPin, Plus, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, Check, GripVertical, MapPin, Plus, Trash2, Upload } from 'lucide-react';
+import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import {
   adminGetInvitation, adminUpdateInvitation,
   adminCreateScheduleEvent, adminUpdateScheduleEvent, adminDeleteScheduleEvent,
   adminCreateMilestone, adminUpdateMilestone, adminDeleteMilestone,
-  adminCreateGalleryImage, adminUpdateGalleryImage, adminDeleteGalleryImage,
+  adminCreateGalleryImage, adminUpdateGalleryImage, adminDeleteGalleryImage, adminReorderGalleryImages,
   adminUploadFile, adminListClients, adminCreateClient,
 } from '../lib/api.js';
 import { useAdminAuth } from '../context/AdminAuthContext.jsx';
@@ -676,10 +679,19 @@ function StoryTab({ invitation, onChange, onSaved }) {
   );
 }
 
-// ---- Gallery (multi-image upload) ----------------------------------------------
+// ---- Gallery (multi-image upload, drag-to-reorder) ------------------------------
+//
+// Images upload in whatever order the admin picks them, but sort_order is
+// what the public Gallery.jsx actually renders by — so reordering here has to
+// persist, not just rearrange the local list. Drag state is optimistic (the
+// grid reorders instantly); a failed PUT reverts to the last known-good order
+// rather than leaving the UI silently out of sync with the database.
 
 function GalleryTab({ invitation, onChange, onSaved }) {
   const [images, setImages] = useState(invitation.gallery_images || []);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
 
   async function handleUpload(file) {
     const { path } = await adminUploadFile(invitation.id, file, 'image');
@@ -704,6 +716,24 @@ function GalleryTab({ invitation, onChange, onSaved }) {
     onChange();
   }
 
+  async function handleDragEnd(event) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = images.findIndex((img) => img.id === active.id);
+    const newIndex = images.findIndex((img) => img.id === over.id);
+    const reordered = arrayMove(images, oldIndex, newIndex);
+    const previous = images;
+
+    setImages(reordered);
+    try {
+      await adminReorderGalleryImages(invitation.id, reordered.map((img) => img.id));
+      onSaved?.();
+    } catch {
+      setImages(previous);
+    }
+  }
+
   return (
     <div>
       <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-accent/30 px-4 py-2 text-xs uppercase tracking-[0.2em] text-fg-soft transition hover:bg-accent/10 hover:text-accent">
@@ -711,22 +741,63 @@ function GalleryTab({ invitation, onChange, onSaved }) {
         <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files[0] && handleUpload(e.target.files[0])} />
       </label>
 
-      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {images.map((img, i) => (
-          <div key={img.id} className="rounded-xl border border-accent/15 p-2">
-            <img src={img.image.startsWith('http') ? img.image : `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001'}/storage/${img.image}`} alt={img.alt} className="h-28 w-full rounded-lg object-cover" />
-            <input
-              value={img.alt || ''}
-              onChange={(e) => updateAlt(i, e.target.value)}
-              placeholder="Caption"
-              className="mt-2 w-full rounded-lg border border-ink/10 px-2 py-1 text-xs text-ink outline-none focus:border-accent"
-            />
-            <button type="button" onClick={() => handleDelete(i)} className="mt-2 inline-flex items-center gap-1 text-xs text-rose">
-              <Trash2 size={12} /> Delete
-            </button>
+      {images.length > 1 && (
+        <p className="mt-3 text-xs text-fg-soft">Drag a photo by its handle to reorder the gallery.</p>
+      )}
+
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={images.map((img) => img.id)} strategy={rectSortingStrategy}>
+          <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {images.map((img, i) => (
+              <SortableGalleryImage
+                key={img.id}
+                image={img}
+                onAltChange={(alt) => updateAlt(i, alt)}
+                onDelete={() => handleDelete(i)}
+              />
+            ))}
           </div>
-        ))}
+        </SortableContext>
+      </DndContext>
+    </div>
+  );
+}
+
+function SortableGalleryImage({ image, onAltChange, onDelete }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: image.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="rounded-xl border border-accent/15 p-2">
+      <div className="relative">
+        <img
+          src={image.image.startsWith('http') ? image.image : `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001'}/storage/${image.image}`}
+          alt={image.alt}
+          className="h-28 w-full rounded-lg object-cover"
+        />
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          className="absolute left-1 top-1 flex cursor-grab items-center justify-center rounded-full bg-black/50 p-1 text-white active:cursor-grabbing"
+          aria-label="Drag to reorder"
+        >
+          <GripVertical size={14} />
+        </button>
       </div>
+      <input
+        value={image.alt || ''}
+        onChange={(e) => onAltChange(e.target.value)}
+        placeholder="Caption"
+        className="mt-2 w-full rounded-lg border border-ink/10 px-2 py-1 text-xs text-ink outline-none focus:border-accent"
+      />
+      <button type="button" onClick={onDelete} className="mt-2 inline-flex items-center gap-1 text-xs text-rose">
+        <Trash2 size={12} /> Delete
+      </button>
     </div>
   );
 }
