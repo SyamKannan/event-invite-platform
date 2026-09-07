@@ -25,7 +25,7 @@ class StoredFileUrl
         $disk ??= config('filesystems.uploads_disk', 'public');
 
         if ($disk === 'public') {
-            return asset('storage/'.$path);
+            return asset('storage/'.ltrim($path, '/'));
         }
 
         return Storage::disk($disk)->url($path);
