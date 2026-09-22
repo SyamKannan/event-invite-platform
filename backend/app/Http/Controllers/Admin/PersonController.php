@@ -16,14 +16,14 @@ class PersonController extends Controller
 
     public function store(StorePersonRequest $request, Invitation $invitation): InvitationPerson
     {
-        $this->authorizeInvitation($invitation, $request->user());
+        $this->authorizeInvitationEdit($invitation, $request->user());
 
         return $invitation->people()->create($request->validated());
     }
 
     public function update(StorePersonRequest $request, Invitation $invitation, InvitationPerson $person): InvitationPerson
     {
-        $this->authorizeInvitation($invitation, $request->user());
+        $this->authorizeInvitationEdit($invitation, $request->user());
 
         $person = $invitation->people()->findOrFail($person->id);
         $person->update($request->validated());
@@ -33,7 +33,7 @@ class PersonController extends Controller
 
     public function destroy(Request $request, Invitation $invitation, InvitationPerson $person): JsonResponse
     {
-        $this->authorizeInvitation($invitation, $request->user());
+        $this->authorizeInvitationEdit($invitation, $request->user());
 
         $invitation->people()->whereKey($person->id)->firstOrFail()->delete();
 

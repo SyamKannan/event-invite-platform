@@ -9,6 +9,21 @@ use Illuminate\Validation\Rule;
 
 class UpdateInvitationRequest extends FormRequest
 {
+    /**
+     * Keys ThemeProvider.jsx maps onto --color-* CSS variables. Values are
+     * space-separated RGB triplets ("212 168 95").
+     *
+     * @var list<string>
+     */
+    public const array THEME_KEYS = ['bg', 'surface', 'fg', 'fgSoft', 'ink', 'muted', 'accent', 'gold', 'rose'];
+
+    /**
+     * Must match frontend/src/lib/animationPresets.js's ANIMATION_PRESETS keys.
+     *
+     * @var list<string>
+     */
+    public const array ANIMATION_INTENSITIES = ['subtle', 'balanced', 'playful'];
+
     public function authorize(): bool
     {
         return true;
@@ -31,10 +46,11 @@ class UpdateInvitationRequest extends FormRequest
             'is_published' => ['sometimes', 'boolean'],
             'meta_title' => ['sometimes', 'nullable', 'string', 'max:255'],
             'meta_description' => ['sometimes', 'nullable', 'string', 'max:500'],
-            'theme' => ['sometimes', 'nullable', 'array'],
+            'theme' => ['sometimes', 'nullable', 'array:'.implode(',', self::THEME_KEYS)],
+            'theme.*' => ['string', 'regex:/^\d{1,3} \d{1,3} \d{1,3}$/'],
             'story_layout' => ['sometimes', 'string', Rule::in($typeConfig['storyLayouts'])],
-            'animation_intensity' => ['sometimes', 'string', Rule::in(['subtle', 'balanced', 'playful'])],
-            'owner_id' => ['sometimes', 'nullable', 'exists:users,id'],
+            'animation_intensity' => ['sometimes', 'string', Rule::in(self::ANIMATION_INTENSITIES)],
+            'owner_id' => ['sometimes', 'nullable', Rule::exists('users', 'id')->where('role', 'client')],
 
             // Detail
             'detail' => ['sometimes', 'array'],
@@ -42,14 +58,14 @@ class UpdateInvitationRequest extends FormRequest
             'detail.display_date' => ['sometimes', 'nullable', 'string', 'max:120'],
             'detail.display_time' => ['sometimes', 'nullable', 'string', 'max:60'],
             'detail.display_location' => ['sometimes', 'nullable', 'string', 'max:120'],
-            'detail.hero_image' => ['sometimes', 'nullable', 'string'],
+            'detail.hero_image' => ['sometimes', 'nullable', 'string', 'max:255'],
             'detail.hero_overline' => ['sometimes', 'nullable', 'string', 'max:120'],
             'detail.hero_tagline' => ['sometimes', 'nullable', 'string', 'max:120'],
             'detail.envelope_overline' => ['sometimes', 'nullable', 'string', 'max:120'],
             'detail.envelope_cta' => ['sometimes', 'nullable', 'string', 'max:60'],
             'detail.envelope_animation' => ['sometimes', 'nullable', 'string', Rule::in(array_keys(EnvelopeAnimations::ALL))],
             'detail.music_enabled' => ['sometimes', 'boolean'],
-            'detail.music_src' => ['sometimes', 'nullable', 'string'],
+            'detail.music_src' => ['sometimes', 'nullable', 'string', 'max:255'],
             'detail.contact_phone_primary' => ['sometimes', 'nullable', 'string', 'max:30'],
             'detail.contact_phone_secondary' => ['sometimes', 'nullable', 'string', 'max:30'],
             'detail.contact_email' => ['sometimes', 'nullable', 'email', 'max:120'],
@@ -69,9 +85,11 @@ class UpdateInvitationRequest extends FormRequest
             // another type's person rows.
             'people' => ['sometimes', 'array'],
             'people.*.role' => ['required_with:people', Rule::in($allowedRoles)],
-            'people.*.first_name' => ['required_with:people', 'string', 'max:60'],
+            // Nullable: a hidden side (e.g. groom not shown) or a not-yet-known
+            // name may be blank — stored as '' by the controller.
+            'people.*.first_name' => ['nullable', 'string', 'max:60'],
             'people.*.parents_text' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'people.*.photo' => ['sometimes', 'nullable', 'string'],
+            'people.*.photo' => ['sometimes', 'nullable', 'string', 'max:255'],
         ] + EventTypes::extraValidationRules($invitation->type);
     }
 }

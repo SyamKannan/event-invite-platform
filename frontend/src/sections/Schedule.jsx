@@ -26,8 +26,12 @@ export function Schedule() {
 
   if (!schedule.enabled) return null;
 
+  // An event with no team — or one that doesn't match any tab (the old
+  // free-text "Team" field allowed anything) — is shared and shows under
+  // every tab, instead of silently vanishing.
+  const tabIds = new Set((tabs || []).map((t) => t.id));
   const visibleEvents = tabs
-    ? schedule.events.filter((ev) => !ev.team || ev.team === activeTab)
+    ? schedule.events.filter((ev) => !ev.team || !tabIds.has(ev.team) || ev.team === activeTab)
     : schedule.events;
 
   return (
@@ -78,12 +82,14 @@ function EventCard({ event, index }) {
 
       <ul className="mt-5 space-y-3 text-sm text-muted">
         <li className="flex items-center gap-3"><Calendar size={16} className="text-accent" /><span>{formatDate(event.date)}</span></li>
-        <li className="flex items-center gap-3"><Clock size={16} className="text-accent" /><span>{event.time}</span></li>
+        {event.time && (
+          <li className="flex items-center gap-3"><Clock size={16} className="text-accent" /><span>{event.time}</span></li>
+        )}
         <li className="flex items-start gap-3">
           <MapPin size={16} className="mt-0.5 shrink-0 text-accent" />
           <span>
             <span className="block text-ink">{event.venue}</span>
-            <span className="block">{event.address}</span>
+            {event.address && <span className="block">{event.address}</span>}
           </span>
         </li>
         {event.dresscode && (

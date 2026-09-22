@@ -17,7 +17,7 @@ class StoreGalleryImageRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'image' => ['required', 'string'],
+            'image' => ['required', 'string', 'max:255'],
             'alt' => ['nullable', 'string', 'max:120'],
             'span' => ['nullable', 'in:tall,wide'],
             'sort_order' => ['nullable', 'integer', 'min:0'],

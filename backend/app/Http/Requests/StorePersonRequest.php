@@ -25,7 +25,7 @@ class StorePersonRequest extends FormRequest
             'role' => ['required', Rule::in($allowedRoles)],
             'first_name' => ['required', 'string', 'max:60'],
             'parents_text' => ['nullable', 'string', 'max:255'],
-            'photo' => ['nullable', 'string'],
+            'photo' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

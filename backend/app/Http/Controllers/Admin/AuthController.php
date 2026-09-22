@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -21,7 +21,11 @@ class AuthController extends Controller
         /** @var User|null $user */
         $user = User::where('username', $credentials['username'])->first();
 
-        if (! $user || ! Auth::getProvider()->validateCredentials($user, ['password' => $credentials['password']])) {
+        // Hash::check directly rather than Auth::getProvider(): the default
+        // guard can be switched to 'sanctum' (a RequestGuard with no user
+        // provider) by an earlier auth:sanctum request in the same process,
+        // which made getProvider() null and login a 500.
+        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             throw ValidationException::withMessages([
                 'username' => ['These credentials do not match our records.'],
             ]);

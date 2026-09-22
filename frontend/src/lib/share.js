@@ -6,11 +6,14 @@
 // JavaScript, so a raw SPA URL previews with nothing but index.html's generic
 // title/description. The /share page serves static Open Graph tags for the
 // crawler and redirects a real visitor straight through to the SPA.
+//
+// /share only works for PUBLISHED invitations (it 404s for drafts) — callers
+// should hide or disable share buttons while an invitation is a draft.
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001';
+import { API_BASE } from './api.js';
 
 export function shareUrl(slug) {
-  return `${API_BASE}/share/${slug}`;
+  return `${API_BASE}/share/${encodeURIComponent(slug)}`;
 }
 
 export function whatsappShareUrl(slug, message) {

@@ -10,6 +10,7 @@
 
 import { useLayoutEffect } from 'react';
 import { useConfig } from '../context/ConfigContext.jsx';
+import { pageTitle } from '../lib/invitationText.js';
 
 // Must match the :root defaults in src/index.css exactly — this is what we
 // fall back to for any key the current invitation doesn't override.
@@ -40,6 +41,7 @@ const CSS_VAR_BY_KEY = {
 export function ThemeProvider({ children }) {
   const config = useConfig();
   const theme = config.theme;
+  const title = pageTitle(config);
 
   // useLayoutEffect (not useEffect) so CSS variables land on <html> before
   // paint AND before descendant effects run — components like ScratchReveal
@@ -54,10 +56,14 @@ export function ThemeProvider({ children }) {
       root.style.setProperty(cssVar, theme?.[key] || DEFAULT_THEME[key]);
     });
 
-    // Sync <title> and <meta description> with the config.
-    document.title = config.meta.title;
+    // Sync <title> and <meta description> with the config. Both are
+    // optional in the admin — without a fallback the tab would literally
+    // read "null".
+    const previousTitle = document.title;
     const desc = document.querySelector('meta[name="description"]');
-    if (desc) desc.setAttribute('content', config.meta.description);
+    const previousDesc = desc?.getAttribute('content');
+    document.title = title;
+    if (desc) desc.setAttribute('content', config.meta?.description || "You're invited — open to see all the details.");
 
     // On unmount (navigating away from this invitation), restore the
     // site-wide defaults so the next page never inherits leftover colors.
@@ -65,8 +71,10 @@ export function ThemeProvider({ children }) {
       Object.entries(CSS_VAR_BY_KEY).forEach(([key, cssVar]) => {
         root.style.setProperty(cssVar, DEFAULT_THEME[key]);
       });
+      document.title = previousTitle;
+      if (desc && previousDesc != null) desc.setAttribute('content', previousDesc);
     };
-  }, [theme, config.meta.title, config.meta.description]);
+  }, [theme, title, config.meta?.description]);
 
   return children;
 }

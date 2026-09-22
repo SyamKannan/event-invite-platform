@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Observers\InvitationCacheObserver;
 use Database\Factories\InvitationDetailFactory;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+#[ObservedBy(InvitationCacheObserver::class)]
 class InvitationDetail extends Model
 {
     /** @use HasFactory<InvitationDetailFactory> */

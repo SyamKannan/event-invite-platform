@@ -6,6 +6,10 @@
 // self-guards on its own config.<section>.enabled flag, so a type whose
 // registry entry omits a module (e.g. no 'rsvp') simply renders nothing for
 // that section — no extra logic needed here.
+//
+// Every section sits in its own ErrorBoundary: if one throws (bad data,
+// unexpected API shape), only that section disappears — the rest of the
+// invitation still works for guests.
 
 import { ThemeProvider } from '../components/ThemeProvider.jsx';
 import { Envelope } from '../components/Envelope.jsx';
@@ -13,6 +17,7 @@ import { NavBar } from '../components/NavBar.jsx';
 import { Footer } from '../components/Footer.jsx';
 import { MusicToggle } from '../components/MusicToggle.jsx';
 import { FloatingHearts } from '../components/FloatingHearts.jsx';
+import { ErrorBoundary } from '../components/ErrorBoundary.jsx';
 
 import { Hero } from '../sections/Hero.jsx';
 import { Countdown } from '../sections/Countdown.jsx';
@@ -22,23 +27,31 @@ import { RSVP } from '../sections/RSVP.jsx';
 import { Gallery } from '../sections/Gallery.jsx';
 import { Guestbook } from '../sections/Guestbook.jsx';
 
+const SECTIONS = [
+  ['hero', Hero],
+  ['countdown', Countdown],
+  ['story', Story],
+  ['schedule', Schedule],
+  ['rsvp', RSVP],
+  ['gallery', Gallery],
+  ['guestbook', Guestbook],
+];
+
 export function StandardShell() {
   return (
     <ThemeProvider>
-      <Envelope />
-      <FloatingHearts />
-      <NavBar />
+      <ErrorBoundary name="envelope"><Envelope /></ErrorBoundary>
+      <ErrorBoundary name="decor"><FloatingHearts /></ErrorBoundary>
+      <ErrorBoundary name="nav"><NavBar /></ErrorBoundary>
       <main>
-        <Hero />
-        <Countdown />
-        <Story />
-        <Schedule />
-        <RSVP />
-        <Gallery />
-        <Guestbook />
+        {SECTIONS.map(([name, Section]) => (
+          <ErrorBoundary key={name} name={name}>
+            <Section />
+          </ErrorBoundary>
+        ))}
       </main>
-      <Footer />
-      <MusicToggle />
+      <ErrorBoundary name="footer"><Footer /></ErrorBoundary>
+      <ErrorBoundary name="music"><MusicToggle /></ErrorBoundary>
     </ThemeProvider>
   );
 }

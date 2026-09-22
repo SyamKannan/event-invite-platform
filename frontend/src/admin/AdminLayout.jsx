@@ -46,7 +46,9 @@ function Shell() {
             <Heart size={18} fill="currentColor" /> {brandLabel}
           </Link>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-fg-soft">{user.email}</span>
+            {/* Clients are often created without an email, so show the
+                name (or username) rather than a blank. */}
+            <span className="hidden text-sm text-fg-soft sm:inline">{user.name || user.username}</span>
             <button
               onClick={handleLogout}
               className="inline-flex items-center gap-1.5 rounded-full border border-accent/30 px-4 py-1.5 text-xs uppercase tracking-[0.2em] text-fg-soft transition hover:bg-accent/10 hover:text-accent"

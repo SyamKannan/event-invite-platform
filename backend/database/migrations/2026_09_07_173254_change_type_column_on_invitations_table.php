@@ -1,16 +1,16 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Widens invitations.type from enum('wedding','birthday') to a plain string
  * so new event types can be added via App\Support\EventTypes alone, with no
  * further migration. Non-destructive: existing 'wedding'/'birthday' values
- * remain valid strings. Uses raw SQL rather than Schema::table()->change()
- * since doctrine/dbal isn't installed in this project. SQLite (used by the
- * test suite) is untyped for this purpose — CHECK/ENUM constraints aren't
- * enforced the same way, so there is nothing to widen there.
+ * remain valid strings. Uses the schema builder's native ->change() (no
+ * doctrine/dbal needed since Laravel 11) so it runs identically on MySQL
+ * and on the SQLite test database, instead of being skipped there.
  */
 return new class extends Migration
 {
@@ -19,9 +19,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (DB::connection()->getDriverName() === 'mysql') {
-            DB::statement('ALTER TABLE invitations MODIFY type VARCHAR(40) NOT NULL');
-        }
+        Schema::table('invitations', function (Blueprint $table): void {
+            $table->string('type', 40)->change();
+        });
     }
 
     /**
@@ -29,8 +29,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        if (DB::connection()->getDriverName() === 'mysql') {
-            DB::statement("ALTER TABLE invitations MODIFY type ENUM('wedding', 'birthday') NOT NULL");
-        }
+        Schema::table('invitations', function (Blueprint $table): void {
+            $table->enum('type', ['wedding', 'birthday'])->change();
+        });
     }
 };

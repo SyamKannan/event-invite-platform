@@ -26,21 +26,13 @@ return Application::configure(basePath: dirname(__DIR__))
             | Request::HEADER_X_FORWARDED_PORT
             | Request::HEADER_X_FORWARDED_PROTO);
 
-        $middleware->statefulApi();
-
-        // Public invitation endpoints (RSVP, wishes) are read/written by
-        // anonymous visitors with no CSRF cookie. Every admin/* endpoint
-        // authenticates via a Sanctum bearer token (Authorization header),
-        // not a cookie session — CSRF specifically targets cookie-based
-        // auth (a forged cross-site request can ride along with cookies but
-        // can't attach an Authorization header), so token auth is exempt by
-        // its nature. Without this, a stale session cookie left over from
-        // browser testing can trip a 419 on requests that never actually
-        // relied on that cookie for auth.
-        $middleware->validateCsrfTokens(except: [
-            'api/invitations/*',
-            'api/admin/*',
-        ]);
+        // No statefulApi(): admin/client auth is purely a Sanctum bearer
+        // token (Authorization header), never a cookie session — the
+        // frontend (Vercel) and backend (Railway) live on unrelated domains.
+        // The api/* group therefore carries no session or CSRF middleware at
+        // all, which is correct for header-based auth (a forged cross-site
+        // request can't attach an Authorization header) and for the
+        // anonymous public RSVP/wish endpoints.
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

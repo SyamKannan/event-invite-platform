@@ -11,6 +11,7 @@ use App\Models\Invitation;
 use App\Models\Rsvp;
 use App\Models\Wish;
 use App\Support\EventTypes;
+use App\Support\InvitationFiles;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -45,14 +46,16 @@ class InvitationController extends Controller
         }
 
         if ($search = $request->string('search')->trim()->value()) {
-            $query->where(function ($q) use ($search): void {
-                $q->where('slug', 'like', "%{$search}%")
-                    ->orWhere('meta_title', 'like', "%{$search}%");
+            // Escape LIKE wildcards so a search for "100%" or "a_b" matches
+            // literally instead of acting as a pattern.
+            $like = '%'.addcslashes($search, '%_\\').'%';
+            $query->where(function ($q) use ($like): void {
+                $q->where('slug', 'like', $like)
+                    ->orWhere('meta_title', 'like', $like);
             });
         }
 
-        $perPage = (int) $request->integer('per_page', 12);
-        $perPage = max(1, min($perPage, 100));
+        $perPage = max(1, min($request->integer('per_page', 12), 100));
 
         return InvitationResource::collection($query->paginate($perPage));
     }
@@ -73,15 +76,16 @@ class InvitationController extends Controller
             fn ($q) => $q->where('owner_id', $user->id)
         );
 
-        $ids = $scope()->pluck('id');
-
         $byType = $scope()
             ->select('type', DB::raw('count(*) as count'))
             ->groupBy('type')
             ->pluck('count', 'type');
 
+        // Subquery rather than plucking every id into PHP first.
+        $ids = $scope()->select('id');
+
         return [
-            'total' => $ids->count(),
+            'total' => $scope()->count(),
             'published' => $scope()->where('is_published', true)->count(),
             'draft' => $scope()->where('is_published', false)->count(),
             'rsvps' => Rsvp::query()->whereIn('invitation_id', $ids)->count(),
@@ -98,33 +102,33 @@ class InvitationController extends Controller
 
         $typeConfig = EventTypes::ALL[$request->validated('type')] ?? EventTypes::ALL['wedding'];
 
-        // story_layout/animation_intensity are seeded straight from the type's
-        // registry defaults so every event type opens looking and feeling
-        // distinct out of the box — see the `default*` keys' doc block on
-        // EventTypes::ALL. This is deliberately the only place theme is NOT
-        // seeded server-side: defaultThemePreset only names a preset key, and
-        // resolving it to actual RGB values is done client-side in
-        // Dashboard.jsx (the palette intentionally lives only in
-        // frontend/src/admin/themePresets.js, not duplicated here).
-        $invitation = Invitation::create($request->validated() + [
-            'story_layout' => $typeConfig['defaultStoryLayout'] ?? 'constellation',
-            'animation_intensity' => $typeConfig['defaultAnimationIntensity'] ?? 'balanced',
-        ]);
-
-        // connector is NOT NULL DEFAULT '&' at the DB level — only override
-        // it for wedding (its only meaningful type); every other type keeps
-        // the column default rather than an explicit null insert.
-        $invitation->detail()->create([
-            'envelope_animation' => $typeConfig['defaultEnvelopeAnimation'] ?? 'swing-doors',
-            ...($invitation->type === 'wedding' ? ['connector' => '&'] : []),
-        ]);
-
-        foreach ($typeConfig['roles'] as $role => $label) {
-            $invitation->people()->create([
-                'role' => $role,
-                'first_name' => $label,
+        // One transaction so a failure part-way never leaves a half-created
+        // invitation behind (which would then make a retry fail on "slug
+        // already taken"). story_layout/animation_intensity/envelope come
+        // from the type's registry defaults; theme is sent by the client
+        // (resolved from the type's defaultThemePreset in themePresets.js,
+        // the only place the palette RGB values live).
+        $invitation = DB::transaction(function () use ($request, $typeConfig): Invitation {
+            $invitation = Invitation::create($request->validated() + [
+                'story_layout' => $typeConfig['defaultStoryLayout'] ?? 'constellation',
+                'animation_intensity' => $typeConfig['defaultAnimationIntensity'] ?? 'balanced',
             ]);
-        }
+
+            $invitation->detail()->create([
+                'envelope_animation' => $typeConfig['defaultEnvelopeAnimation'] ?? 'swing-doors',
+            ]);
+
+            // Blank names rather than the role label ("Bride", "Groom") so a
+            // placeholder never shows up on a public page by accident.
+            foreach (array_keys($typeConfig['roles']) as $role) {
+                $invitation->people()->create([
+                    'role' => $role,
+                    'first_name' => '',
+                ]);
+            }
+
+            return $invitation;
+        });
 
         return new InvitationResource($invitation->load(['detail', 'people']));
     }
@@ -140,39 +144,75 @@ class InvitationController extends Controller
 
     public function update(UpdateInvitationRequest $request, Invitation $invitation): InvitationResource
     {
-        $user = $request->user();
-        $this->authorizeInvitation($invitation, $user);
+        $this->authorizeInvitationEdit($invitation, $request->user());
 
         $data = $request->validated();
 
-        // Only an admin may reassign which client owns an invitation.
-        if (! $user->isAdmin()) {
-            unset($data['owner_id']);
-        }
+        DB::transaction(function () use ($invitation, $data): void {
+            $invitation->update(collect($data)->only([
+                'slug', 'is_published', 'meta_title', 'meta_description', 'theme',
+                'story_layout', 'animation_intensity', 'owner_id',
+            ])->toArray());
 
-        $invitation->update(collect($data)->only([
-            'slug', 'is_published', 'meta_title', 'meta_description', 'theme',
-            'story_layout', 'animation_intensity', 'owner_id',
-        ])->toArray());
+            if (! empty($data['detail'])) {
+                $invitation->detail()->updateOrCreate([], $this->normalizeDetail($data['detail']));
+            }
 
-        if (! empty($data['detail'])) {
-            $invitation->detail()->updateOrCreate([], $data['detail']);
-        }
-
-        if (isset($data['people'])) {
-            $invitation->people()->delete();
-            $invitation->people()->createMany($data['people']);
-        }
+            if (isset($data['people'])) {
+                $invitation->people()->delete();
+                $invitation->people()->createMany(array_map(fn (array $person): array => [
+                    ...$person,
+                    // first_name is NOT NULL; an intentionally blank side
+                    // (e.g. a hidden groom) is stored as an empty string.
+                    'first_name' => $person['first_name'] ?? '',
+                ], $data['people']));
+            }
+        });
 
         return new InvitationResource($invitation->fresh(['detail', 'people']));
     }
 
     public function destroy(Request $request, Invitation $invitation): JsonResponse
     {
-        $this->authorizeInvitation($invitation, $request->user());
+        $this->authorizeInvitationEdit($invitation, $request->user());
+
+        $invitation->load(['detail', 'people', 'milestones', 'galleryImages']);
+        $paths = InvitationFiles::referencedPaths($invitation);
+        $slug = $invitation->slug;
 
         $invitation->delete();
 
+        InvitationFiles::delete($paths, $slug);
+
         return response()->json(status: 204);
+    }
+
+    /**
+     * Columns that are NOT NULL with a DB default: an admin clearing the
+     * field (sent as null by ConvertEmptyStringsToNull) falls back to that
+     * default instead of tripping a 500 on the insert.
+     *
+     * @param  array<string, mixed>  $detail
+     * @return array<string, mixed>
+     */
+    private function normalizeDetail(array $detail): array
+    {
+        $defaults = [
+            'connector' => '&',
+            'envelope_animation' => 'swing-doors',
+            'floating_decor_count' => 14,
+            'music_enabled' => false,
+            'floating_decor_enabled' => true,
+            'show_bride' => true,
+            'show_groom' => true,
+        ];
+
+        foreach ($defaults as $key => $default) {
+            if (array_key_exists($key, $detail) && $detail[$key] === null) {
+                $detail[$key] = $default;
+            }
+        }
+
+        return $detail;
     }
 }

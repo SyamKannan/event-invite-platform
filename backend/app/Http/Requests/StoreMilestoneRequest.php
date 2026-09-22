@@ -22,7 +22,7 @@ class StoreMilestoneRequest extends FormRequest
             'date_label' => ['required', 'string', 'max:60'],
             'title' => ['required', 'string', 'max:80'],
             'description' => ['nullable', 'string', 'max:1000'],
-            'image' => ['nullable', 'string'],
+            'image' => ['nullable', 'string', 'max:255'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
         ];
     }

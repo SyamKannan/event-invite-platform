@@ -1,6 +1,7 @@
-// HERO — first big screen on the page. Photo background with the couple's
+// HERO — first big screen on the page. Photo background with the hosts'
 // names in clean ivory serif on top, plus three "scratch to reveal" gold
-// coins that hide the wedding date until the visitor scratches them.
+// coins that hide the event date until the visitor scratches them (only
+// shown once the admin has actually set a date).
 //
 // NEW FEATURES ADDED:
 //   1. Rose-petal rain — CSS-animated petals drift down over the hero
@@ -18,6 +19,11 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 import { ChevronDown, Heart } from 'lucide-react';
 import { useConfig } from '../context/ConfigContext.jsx';
 import { getAnimationPreset } from '../lib/animationPresets.js';
+import { eventDate } from '../lib/invitationText.js';
+
+// Rose petals suit a wedding/anniversary; everything else gets a neutral
+// sparkle so a business opening doesn't rain flowers.
+const PETAL_GLYPH = { wedding: '🌸', anniversary: '🌸' };
 import { ScratchCoin } from '../components/ScratchReveal.jsx';
 
 export function Hero() {
@@ -44,10 +50,14 @@ export function Hero() {
   const { scrollY } = useScroll();
   const bgShift = useTransform(scrollY, [0, 800], [0, 200]);
 
-  const date = new Date(config.weddingDateISO);
-  const day = String(date.getDate()).padStart(2, '0');
-  const monthShort = date.toLocaleString(undefined, { month: 'short' }).toUpperCase();
-  const year = String(date.getFullYear());
+  const date = eventDate(config);
+  const day = date ? String(date.getDate()).padStart(2, '0') : '';
+  const monthShort = date ? date.toLocaleString(undefined, { month: 'short' }).toUpperCase() : '';
+  const year = date ? String(date.getFullYear()) : '';
+  const petalGlyph = PETAL_GLYPH[config.type] || '✧';
+  // The scroll-hint arrow targets the first section that actually renders.
+  const nextSectionId = ['countdown', 'story', 'schedule', 'rsvp', 'gallery', 'guestbook']
+    .find((id) => config[id]?.enabled);
 
   // Pre-compute petal data once so positions stay stable across re-renders.
   const petals = useMemo(
@@ -89,12 +99,15 @@ export function Hero() {
     >
       {/* Background photo with parallax. */}
       <motion.div className="absolute inset-0 -z-10" style={{ y: bgShift }}>
-        <img
-          src={hero.backgroundImage}
-          alt=""
-          className="h-[120%] w-full object-cover"
-          loading="eager"
-        />
+        {hero.backgroundImage && (
+          <img
+            src={hero.backgroundImage}
+            alt=""
+            className="h-[120%] w-full object-cover"
+            loading="eager"
+            fetchpriority="high"
+          />
+        )}
         <div className="absolute inset-0 bg-bg/60" />
         <div className="absolute inset-0 bg-gradient-to-b from-bg/30 via-transparent to-bg" />
       </motion.div>
@@ -136,7 +149,7 @@ export function Hero() {
           }}
           transition={{ duration: p.duration, delay: p.delay, repeat: Infinity, ease: 'linear' }}
         >
-          🌸
+          {petalGlyph}
         </motion.div>
       ))}
 
@@ -225,13 +238,24 @@ export function Hero() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 1, delay: 1.8 }}
-            className="mt-8 text-xs uppercase tracking-[0.4em] text-fg-soft"
+            className="mt-8 font-display text-lg italic text-fg-soft sm:text-xl"
           >
-            {isBirthday ? 'Party date reveal' : 'Wedding date reveal'}
+            {hero.tagline}
           </motion.p>
         )}
 
-        {nameRevealReady && (
+        {nameRevealReady && date && (
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 1, delay: 1.9 }}
+            className="mt-8 text-xs uppercase tracking-[0.4em] text-fg-soft"
+          >
+            {hero.dateRevealLabel || 'Date reveal'}
+          </motion.p>
+        )}
+
+        {nameRevealReady && date && (
           <>
             <motion.div
               initial={{ opacity: 0, scale: 0 }}
@@ -275,11 +299,23 @@ export function Hero() {
             </motion.p>
           </>
         )}
+
+        {nameRevealReady && !date && display.location && (
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 1, delay: 2 }}
+            className="mt-10 text-xs uppercase tracking-[0.3em] text-fg-soft"
+          >
+            {display.location}
+          </motion.p>
+        )}
       </div>
 
+      {nextSectionId && (
       <motion.a
-        href="#countdown"
-        aria-label="Scroll to countdown"
+        href={`#${nextSectionId}`}
+        aria-label="Scroll to the next section"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1, y: [0, 8, 0] }}
         transition={{
@@ -290,12 +326,15 @@ export function Hero() {
       >
         <ChevronDown size={28} strokeWidth={1.5} />
       </motion.a>
+      )}
     </section>
   );
 }
 
 function AnimatedName({ name, delay = 0 }) {
-  const letters = name.split('');
+  // Names are optional in the admin (e.g. a hidden side, a new invitation).
+  if (!name) return null;
+  const letters = Array.from(name); // Array.from keeps emoji/combining chars intact
   return (
     <span className="block">
       {letters.map((letter, i) => (

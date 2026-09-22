@@ -33,6 +33,22 @@ namespace App\Support;
 class EventTypes
 {
     /**
+     * Fallback for types without their own 'decorSymbols' — neutral, so a
+     * business opening doesn't float love hearts.
+     *
+     * @var list<string>
+     */
+    public const array DEFAULT_DECOR_SYMBOLS = ['✦', '✿', '✧', '❋', '✦'];
+
+    /**
+     * Fallback RSVP meal choices; a type sets 'mealOptions' => [] to hide the
+     * question entirely (e.g. a volunteer sign-up).
+     *
+     * @var list<string>
+     */
+    public const array DEFAULT_MEAL_OPTIONS = ['Vegetarian', 'Non-vegetarian', 'Vegan', 'No preference'];
+
+    /**
      * @var array<string, array{
      *     label: string,
      *     icon: string,
@@ -43,6 +59,8 @@ class EventTypes
      *     defaultStoryLayout?: string,
      *     defaultAnimationIntensity: string,
      *     storyLayouts: list<string>,
+     *     decorSymbols?: list<string>,
+     *     mealOptions?: list<string>,
      *     copy: array<string, string>,
      * }>
      */
@@ -57,7 +75,13 @@ class EventTypes
             'defaultStoryLayout' => 'constellation',
             'defaultAnimationIntensity' => 'balanced',
             'storyLayouts' => ['constellation', 'timeline', 'horizontal', 'stacked', 'mosaic'],
+            'decorSymbols' => ['❤', '✦', '✿', '❤', '✦'],
             'copy' => [
+                'countdown.subtitle' => 'counting down to forever',
+                'countdown.eventLabel' => 'Wedding day',
+                'countdown.todayMessage' => 'Today is the day! Thank you for sharing it with us.',
+                'countdown.pastMessage' => 'Thank you for celebrating our wedding with us.',
+                'hero.dateRevealLabel' => 'Wedding date reveal',
                 'story.title' => 'Our Journey',
                 'story.subtitle' => 'A few moments along the way',
                 'schedule.title' => 'The Celebration',
@@ -85,7 +109,11 @@ class EventTypes
             'defaultStoryLayout' => 'horizontal',
             'defaultAnimationIntensity' => 'playful',
             'storyLayouts' => ['constellation', 'timeline', 'horizontal', 'stacked', 'mosaic'],
+            'decorSymbols' => ['✦', '✿', '★', '❋', '✧'],
             'copy' => [
+                'countdown.subtitle' => 'counting down to the party',
+                'countdown.eventLabel' => 'Party day',
+                'hero.dateRevealLabel' => 'Party date reveal',
                 'story.title' => 'Our Journey',
                 'story.subtitle' => 'A few moments along the way',
                 'schedule.title' => 'Party Details',
@@ -196,7 +224,9 @@ class EventTypes
             'defaultStoryLayout' => 'stacked',
             'defaultAnimationIntensity' => 'subtle',
             'storyLayouts' => ['timeline', 'constellation', 'stacked'],
+            'decorSymbols' => ['❤', '✦', '✿', '❤', '✦'],
             'copy' => [
+                'countdown.eventLabel' => 'Anniversary day',
                 'story.title' => 'Years Together',
                 'story.subtitle' => 'A journey worth celebrating',
                 'gallery.title' => 'Memories',
@@ -234,6 +264,7 @@ class EventTypes
             'defaultEnvelopeAnimation' => 'iris-open',
             'defaultAnimationIntensity' => 'subtle',
             'storyLayouts' => [],
+            'mealOptions' => [],
             'copy' => [
                 'schedule.title' => 'Event Schedule',
                 'schedule.subtitle' => 'Join us for these moments',

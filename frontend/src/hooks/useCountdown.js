@@ -10,11 +10,13 @@ import { useEffect, useState } from 'react';
 
 export function useCountdown(targetISO) {
   // Convert the ISO string ("2026-06-14T...") into milliseconds since 1970.
-  const target = new Date(targetISO).getTime();
+  // A missing target counts as "no countdown" (target = now), never 1970.
+  const parsed = targetISO ? new Date(targetISO).getTime() : NaN;
 
   // `now` is a piece of state that holds the current time in ms.
   // `setNow` updates it. When state changes, React re-renders the component.
   const [now, setNow] = useState(() => Date.now());
+  const target = Number.isNaN(parsed) ? now : parsed;
 
   // useEffect runs side effects (timers, fetches, subscriptions).
   // Here: start a timer that updates `now` every second, then clean up on unmount.

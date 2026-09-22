@@ -80,12 +80,14 @@ export function MusicToggle() {
 
   return (
     <>
-      {/* The actual audio element (invisible). */}
+      {/* The actual audio element (invisible). preload="none": don't
+          download a possibly multi-MB track on page load over mobile data —
+          it starts loading on the first play(). */}
       <audio
         ref={audioRef}
         src={music.src}
         loop
-        preload="auto"
+        preload="none"
         onError={() => setLoadFailed(true)}
       />
 

@@ -1,45 +1,33 @@
-// FOOTER — couple names, date, contact info, back-to-top, and Instagram.
+// FOOTER — host names, date, contact info, back-to-top, and Instagram.
 //
-// NEW FEATURES:
-//   1. Rotating blessing quotes — a new quote appears every 5 seconds
+//   1. Rotating quotes — a new one every 5 seconds, chosen to fit the event
+//      type (no marriage quotes on a business opening)
 //   2. Gold animated sparkle ornaments flanking the names
-//   3. Subtle animated shimmer on the couple's names
+//   3. Subtle animated shimmer on the names
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronUp, Heart, Instagram, Mail, Phone, Sparkles } from 'lucide-react';
+import { ChevronUp, Heart, Instagram, Mail, Phone } from 'lucide-react';
 import { useConfig } from '../context/ConfigContext.jsx';
-
-// Beautiful blessings that rotate in the footer.
-const BLESSINGS = [
-  '"May your love be modern enough to survive the times, and old-fashioned enough to last forever."',
-  '"A successful marriage requires falling in love many times, always with the same person."',
-  '"The best thing to hold onto in life is each other."',
-  '"Where there is great love, there are always wishes."',
-  '"You are my today and all of my tomorrows."',
-];
+import { displayName as getDisplayName, footerQuotes } from '../lib/invitationText.js';
 
 export function Footer() {
   const config = useConfig();
   const c = config.contact || {};
-  const displayName = config.type === 'birthday'
-    ? config.celebrant?.firstName
-    : config.couple
-      ? [config.couple?.bride?.firstName, config.couple?.groom?.firstName]
-          .filter(Boolean)
-          .join(` ${config.couple?.connector ?? '&'} `)
-      // Any other type has no couple/celebrant shape — fall back to the
-      // generic people map (see InvitationConfigResource's 'people' key).
-      : Object.values(config.people || {}).map((p) => p?.firstName).filter(Boolean).join(' & ');
+  const displayName = getDisplayName(config);
+  const quotes = footerQuotes(config.type);
+  // Type-neutral names, falling back to the legacy bride/groom aliases.
+  const phonePrimary = c.phonePrimary ?? c.bridePhone;
+  const phoneSecondary = c.phoneSecondary ?? c.groomPhone;
   const [quoteIdx, setQuoteIdx] = useState(0);
 
   // Rotate the blessing quote every 5 seconds.
   useEffect(() => {
     const interval = setInterval(() => {
-      setQuoteIdx((prev) => (prev + 1) % BLESSINGS.length);
+      setQuoteIdx((prev) => (prev + 1) % quotes.length);
     }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [quotes.length]);
 
   function scrollToTop() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -75,12 +63,12 @@ export function Footer() {
         </div>
 
         <p className="mt-3 flex items-center justify-center gap-2 text-sm uppercase tracking-[0.3em] text-fg-soft">
-          <span>{config.display.date}</span>
+          {config.display.date && <span>{config.display.date}</span>}
+          {config.display.date && config.display.location && (
+            <Heart size={12} className="text-accent" fill="currentColor" />
+          )}
           {config.display.location && (
-            <>
-              <Heart size={12} className="text-accent" fill="currentColor" />
-              <span>{config.display.location}</span>
-            </>
+            <span>{config.display.location}</span>
           )}
         </p>
 
@@ -95,7 +83,7 @@ export function Footer() {
               transition={{ duration: 0.6 }}
               className="font-display italic text-base text-fg-soft/80 leading-relaxed"
             >
-              {BLESSINGS[quoteIdx]}
+              {quotes[quoteIdx % quotes.length]}
             </motion.p>
           </AnimatePresence>
         </div>
@@ -116,13 +104,13 @@ export function Footer() {
         />
 
         {/* Contact */}
-        {(c.bridePhone || c.groomPhone || c.email) && (
+        {(phonePrimary || phoneSecondary || c.email) && (
           <ul className="mt-8 flex flex-col items-center justify-center gap-3 text-sm text-fg-soft sm:flex-row sm:gap-8">
-            {c.bridePhone && (
-              <ContactItem icon={<Phone size={14} />} href={`tel:${c.bridePhone}`}>{c.bridePhone}</ContactItem>
+            {phonePrimary && (
+              <ContactItem icon={<Phone size={14} />} href={`tel:${phonePrimary.replace(/\s+/g, '')}`}>{phonePrimary}</ContactItem>
             )}
-            {c.groomPhone && (
-              <ContactItem icon={<Phone size={14} />} href={`tel:${c.groomPhone}`}>{c.groomPhone}</ContactItem>
+            {phoneSecondary && (
+              <ContactItem icon={<Phone size={14} />} href={`tel:${phoneSecondary.replace(/\s+/g, '')}`}>{phoneSecondary}</ContactItem>
             )}
             {c.email && (
               <ContactItem icon={<Mail size={14} />} href={`mailto:${c.email}`}>{c.email}</ContactItem>
@@ -132,7 +120,7 @@ export function Footer() {
 
         {c.instagram && (
           <a
-            href={`https://instagram.com/${c.instagram.replace('@', '')}`}
+            href={`https://instagram.com/${encodeURIComponent(c.instagram.replace(/^@/, '').trim())}`}
             target="_blank"
             rel="noreferrer"
             className="mt-8 inline-flex items-center gap-2 rounded-full border border-accent/40 px-5 py-2 text-xs uppercase tracking-[0.25em] text-fg-soft transition hover:bg-accent/10 hover:text-accent"

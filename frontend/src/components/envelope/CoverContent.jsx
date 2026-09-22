@@ -1,5 +1,5 @@
 // COVER CONTENT — the names/date/CTA block shown on the face of every
-// envelope variant. Kept as one shared component so all 11 animations render
+// envelope variant. Kept as one shared component so every animation renders
 // identical text, just wrapped in different motion containers.
 
 import { motion } from 'framer-motion';

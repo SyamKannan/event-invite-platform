@@ -15,7 +15,7 @@ class UploadController extends Controller
 
     public function store(Request $request, Invitation $invitation): JsonResponse
     {
-        $this->authorizeInvitation($invitation, $request->user());
+        $this->authorizeInvitationEdit($invitation, $request->user());
 
         $request->validate([
             'type' => ['sometimes', 'in:image,audio'],

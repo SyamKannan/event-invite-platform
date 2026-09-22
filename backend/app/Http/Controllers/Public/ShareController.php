@@ -37,14 +37,18 @@ class ShareController extends Controller
         $title = $invitation->meta_title ?: $this->defaultTitle($invitation, $isWedding);
         $description = $invitation->meta_description ?: $this->defaultDescription($detail, $isWedding, $invitation->type);
         $image = $this->resolveImage($invitation, $detail);
-        $frontendUrl = rtrim(explode(',', config('cors.allowed_origins')[0] ?? 'http://localhost:5174')[0], '/');
+        // The first FRONTEND_URLS entry is the canonical public site.
+        $frontendUrl = rtrim(config('cors.allowed_origins')[0] ?? 'http://localhost:5174', '/');
 
+        // The stored slug, not the raw URL segment — MySQL's collation
+        // matches case-insensitively, so /share/Foo would otherwise redirect
+        // to a differently-cased URL than the canonical one.
         return view('share', [
             'title' => $title,
             'description' => $description,
             'image' => $image,
-            'redirectUrl' => "{$frontendUrl}/i/{$slug}",
-            'shareUrl' => url("/share/{$slug}"),
+            'redirectUrl' => "{$frontendUrl}/i/{$invitation->slug}",
+            'shareUrl' => url("/share/{$invitation->slug}"),
         ]);
     }
 

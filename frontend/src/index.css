@@ -192,3 +192,26 @@ html {
 /* Smooth fade-in for images while they load. */
 img { @apply transition-opacity duration-700; }
 img.loading { @apply opacity-0; }
+
+/* RSVP accept confetti (spawned by sections/RSVP.jsx). */
+@keyframes confetti-fly {
+  0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0; }
+}
+
+/* ---------- Reduced motion ----------
+   Visitors whose OS asks for less motion get a still page: no drifting
+   decor, no looping shimmer/breathing, near-instant CSS transitions.
+   (Framer Motion animations are handled by <MotionConfig reducedMotion="user">
+   in App.jsx.) */
+@media (prefers-reduced-motion: reduce) {
+  .floater { display: none; }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

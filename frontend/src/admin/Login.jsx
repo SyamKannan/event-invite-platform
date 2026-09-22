@@ -1,10 +1,10 @@
 // ADMIN LOGIN — username/password, exchanged for a Sanctum bearer token.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Heart, LogIn } from 'lucide-react';
-import { adminLogin } from '../lib/api.js';
+import { adminLogin, adminMe, errorMessage, getAdminToken } from '../lib/api.js';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -13,15 +13,21 @@ export default function Login() {
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Already signed in (valid stored token)? Skip the form.
+  useEffect(() => {
+    if (!getAdminToken()) return;
+    adminMe().then(() => navigate('/admin', { replace: true })).catch(() => {});
+  }, [navigate]);
+
   async function handleSubmit(e) {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
     try {
-      await adminLogin(username, password);
+      await adminLogin(username.trim(), password);
       navigate('/admin');
     } catch (err) {
-      setError(err.status === 422 ? 'Incorrect username or password.' : err.message || 'Login failed.');
+      setError(err.status === 422 ? 'Incorrect username or password.' : errorMessage(err, 'Login failed.'));
     } finally {
       setSubmitting(false);
     }

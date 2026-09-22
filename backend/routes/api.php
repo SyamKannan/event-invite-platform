@@ -19,12 +19,15 @@ use Illuminate\Support\Facades\Route;
 // ---- Public routes (no auth) — consumed by the invitation page itself. ----
 Route::get('event-types', [EventTypeController::class, 'index']);
 Route::get('invitations/{slug}', [PublicInvitationController::class, 'show']);
-Route::post('invitations/{slug}/rsvp', [PublicRsvpController::class, 'store']);
 Route::get('invitations/{slug}/wishes', [PublicWishController::class, 'index']);
-Route::post('invitations/{slug}/wishes', [PublicWishController::class, 'store']);
+
+Route::middleware('throttle:guest-submissions')->group(function (): void {
+    Route::post('invitations/{slug}/rsvp', [PublicRsvpController::class, 'store']);
+    Route::post('invitations/{slug}/wishes', [PublicWishController::class, 'store']);
+});
 
 // ---- Admin auth ----
-Route::post('admin/login', [AuthController::class, 'login']);
+Route::post('admin/login', [AuthController::class, 'login'])->middleware('throttle:login');
 
 Route::middleware('auth:sanctum')->prefix('admin')->group(function (): void {
     Route::post('logout', [AuthController::class, 'logout']);
@@ -38,6 +41,8 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function (): void {
 
     Route::get('clients', [ClientUserController::class, 'index']);
     Route::post('clients', [ClientUserController::class, 'store']);
+    Route::put('clients/{client}', [ClientUserController::class, 'update']);
+    Route::delete('clients/{client}', [ClientUserController::class, 'destroy']);
 
     Route::prefix('invitations/{invitation}')->group(function (): void {
         Route::post('people', [PersonController::class, 'store']);
@@ -61,6 +66,7 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function (): void {
 
         Route::get('rsvps', [AdminRsvpController::class, 'index']);
         Route::get('rsvps/export', [AdminRsvpController::class, 'export']);
+        Route::delete('rsvps/{rsvp}', [AdminRsvpController::class, 'destroy']);
 
         Route::get('wishes', [AdminWishController::class, 'index']);
         Route::delete('wishes/{wish}', [AdminWishController::class, 'destroy']);

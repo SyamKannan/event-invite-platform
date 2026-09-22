@@ -16,14 +16,14 @@ class ScheduleEventController extends Controller
 
     public function store(StoreScheduleEventRequest $request, Invitation $invitation): ScheduleEvent
     {
-        $this->authorizeInvitation($invitation, $request->user());
+        $this->authorizeInvitationEdit($invitation, $request->user());
 
         return $invitation->scheduleEvents()->create($request->validated());
     }
 
     public function update(StoreScheduleEventRequest $request, Invitation $invitation, ScheduleEvent $scheduleEvent): ScheduleEvent
     {
-        $this->authorizeInvitation($invitation, $request->user());
+        $this->authorizeInvitationEdit($invitation, $request->user());
 
         $scheduleEvent = $invitation->scheduleEvents()->findOrFail($scheduleEvent->id);
         $scheduleEvent->update($request->validated());
@@ -33,7 +33,7 @@ class ScheduleEventController extends Controller
 
     public function destroy(Request $request, Invitation $invitation, ScheduleEvent $scheduleEvent): JsonResponse
     {
-        $this->authorizeInvitation($invitation, $request->user());
+        $this->authorizeInvitationEdit($invitation, $request->user());
 
         $invitation->scheduleEvents()->whereKey($scheduleEvent->id)->firstOrFail()->delete();
 

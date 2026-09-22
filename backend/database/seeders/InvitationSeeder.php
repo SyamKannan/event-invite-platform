@@ -27,7 +27,7 @@ class InvitationSeeder extends Seeder
         );
 
         $invitation->detail()->updateOrCreate([], [
-            'event_date' => '2026-06-14 16:00:00',
+            'event_date' => '2026-06-14 10:30:00', // UTC — 4:00 PM IST
             'display_date' => 'Saturday, 14th June 2026',
             'display_time' => '4:00 PM onwards',
             'display_location' => 'Thrissur, Kerala',
@@ -150,7 +150,7 @@ class InvitationSeeder extends Seeder
         );
 
         $invitation->detail()->updateOrCreate([], [
-            'event_date' => '2026-11-08 18:00:00',
+            'event_date' => '2026-11-08 12:30:00', // UTC — 6:00 PM IST
             'display_date' => 'Sunday, 8th November 2026',
             'display_time' => '6:00 PM onwards',
             'display_location' => 'Bengaluru, Karnataka',

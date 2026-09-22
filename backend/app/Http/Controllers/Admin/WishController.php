@@ -23,7 +23,7 @@ class WishController extends Controller
     {
         $this->authorizeInvitation($invitation, $request->user());
 
-        $invitation->wishes()->whereKey($wish)->delete();
+        $invitation->wishes()->whereKey($wish)->firstOrFail()->delete();
 
         return response()->json(status: 204);
     }

@@ -30,6 +30,8 @@ class InvitationConfigResource extends JsonResource
         $groom = $this->people->firstWhere('role', 'groom');
         $celebrant = $this->people->firstWhere('role', 'celebrant');
 
+        $eventDateIso = $detail?->event_date?->toIso8601String();
+
         $showBride = $detail?->show_bride ?? true;
         $showGroom = $detail?->show_groom ?? true;
 
@@ -83,7 +85,12 @@ class InvitationConfigResource extends JsonResource
 
             'people' => $people,
 
-            'weddingDateISO' => $detail?->event_date?->toIso8601String(),
+            // event_date is stored in UTC (the admin editor converts the
+            // admin's local datetime-local value before saving), so this is
+            // an unambiguous instant. weddingDateISO is the legacy name, kept
+            // for back-compat with anything still reading it.
+            'eventDateISO' => $eventDateIso,
+            'weddingDateISO' => $eventDateIso,
             'display' => [
                 'date' => $detail?->display_date,
                 'time' => $detail?->display_time,
@@ -102,10 +109,18 @@ class InvitationConfigResource extends JsonResource
                 'backgroundImage' => $this->photoUrl($detail?->hero_image),
                 'overline' => $detail?->hero_overline,
                 'tagline' => $detail?->hero_tagline,
+                'dateRevealLabel' => $copy['hero.dateRevealLabel'] ?? 'Date reveal',
             ],
 
+            // Without an event date there's nothing to count down to (the
+            // frontend would otherwise treat null as 1970 and announce
+            // "Today is the day!").
             'countdown' => [
-                'enabled' => in_array('countdown', $modules, true),
+                'enabled' => in_array('countdown', $modules, true) && $eventDateIso !== null,
+                'subtitle' => $copy['countdown.subtitle'] ?? 'counting down to the big day',
+                'eventLabel' => $copy['countdown.eventLabel'] ?? 'The big day',
+                'todayMessage' => $copy['countdown.todayMessage'] ?? 'Today is the day! Thank you for celebrating with us.',
+                'pastMessage' => $copy['countdown.pastMessage'] ?? 'Thank you for celebrating with us.',
             ],
 
             'story' => [
@@ -162,6 +177,7 @@ class InvitationConfigResource extends JsonResource
                 'declineLabel' => $copy['rsvp.declineLabel'] ?? 'Regretfully Decline',
                 'acceptThankyou' => $copy['rsvp.acceptThankyou'] ?? 'We can\'t wait to celebrate with you!',
                 'declineThankyou' => $copy['rsvp.declineThankyou'] ?? 'You\'ll be in our hearts that day.',
+                'mealOptions' => $typeConfig['mealOptions'] ?? EventTypes::DEFAULT_MEAL_OPTIONS,
             ],
 
             'gallery' => [
@@ -191,7 +207,11 @@ class InvitationConfigResource extends JsonResource
             'theme' => $this->theme,
             'extra' => $detail?->extra ?? [],
 
+            // phonePrimary/phoneSecondary are the type-neutral names;
+            // bridePhone/groomPhone are legacy aliases of the same values.
             'contact' => [
+                'phonePrimary' => $detail?->contact_phone_primary,
+                'phoneSecondary' => $detail?->contact_phone_secondary,
                 'bridePhone' => $detail?->contact_phone_primary,
                 'groomPhone' => $detail?->contact_phone_secondary,
                 'email' => $detail?->contact_email,
@@ -201,7 +221,7 @@ class InvitationConfigResource extends JsonResource
             'floatingDecor' => [
                 'enabled' => (bool) $detail?->floating_decor_enabled,
                 'count' => $detail?->floating_decor_count ?? 14,
-                'symbols' => ['❤', '✦', '✿', '❤', '✦'],
+                'symbols' => $typeConfig['decorSymbols'] ?? EventTypes::DEFAULT_DECOR_SYMBOLS,
             ],
         ];
     }

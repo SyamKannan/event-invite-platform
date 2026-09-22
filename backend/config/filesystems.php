@@ -30,7 +30,9 @@ return [
     |
     */
 
-    'uploads_disk' => env('UPLOADS_DISK', 'public'),
+    // `?:` rather than env()'s default so an empty `UPLOADS_DISK=` line (as
+    // copied from .env.example) still falls back to 'public'.
+    'uploads_disk' => env('UPLOADS_DISK') ?: 'public',
 
     /*
     |--------------------------------------------------------------------------

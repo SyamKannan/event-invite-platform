@@ -1,14 +1,21 @@
 // COUNTDOWN — four cream cards showing days/hours/minutes/seconds.
 //
-// NEW FEATURES:
 //   1. Animated SVG ring around each card — fills as time passes
 //   2. "You're X% of the way there" progress message
 //   3. Subtle flip animation when each digit changes
+//
+// All wording (subtitle, event label, day-of / after messages) comes from
+// config.countdown, per event type. The backend only enables this section
+// once an event date exists, and the component double-checks, so a missing
+// date can never render as "1 Jan 1970 — Today is the day!".
 
 import { motion } from 'framer-motion';
 import { useCountdown } from '../hooks/useCountdown.js';
 import { useConfig } from '../context/ConfigContext.jsx';
 import { Section } from '../components/ui/Section.jsx';
+import { eventDate } from '../lib/invitationText.js';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 const labels = ['Days', 'Hours', 'Minutes', 'Seconds'];
 // Max values for each unit (used to compute ring fill percentage)
@@ -59,20 +66,33 @@ function RingProgress({ value, max, size = 80 }) {
 
 export function Countdown() {
   const config = useConfig();
-  const isBirthday = config.type === 'birthday';
-  const c = useCountdown(config.weddingDateISO);
+  const copy = config.countdown || {};
+  const date = eventDate(config);
+  const c = useCountdown(date ? date.toISOString() : null);
   const values = [c.days, c.hours, c.minutes, c.seconds];
 
   // Work out how far through the "year before the event" we are.
-  const eventMs = new Date(config.weddingDateISO).getTime();
+  const eventMs = date ? date.getTime() : 0;
   const nowMs = Date.now();
-  const totalMs = 365 * 24 * 60 * 60 * 1000;
+  const totalMs = 365 * DAY_MS;
   const progressPct = Math.max(0, Math.min(100, Math.round(((totalMs - (eventMs - nowMs)) / totalMs) * 100)));
+  // "Today is the day" only on the day itself; afterwards, a thank-you.
+  const isOver = c.isPast && nowMs - eventMs > DAY_MS;
 
-  if (!config.countdown?.enabled) return null;
+  if (!copy.enabled || !date) return null;
+
+  if (isOver) {
+    return (
+      <Section id="countdown" showOrnament={false}>
+        <p className="text-center font-script text-3xl text-accent sm:text-4xl">
+          {copy.pastMessage || 'Thank you for celebrating with us.'}
+        </p>
+      </Section>
+    );
+  }
 
   return (
-    <Section id="countdown" subtitle="counting down to forever" showOrnament={false}>
+    <Section id="countdown" subtitle={copy.subtitle || 'counting down to the big day'} showOrnament={false}>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 sm:gap-6">
         {values.map((value, i) => (
           <motion.div
@@ -117,7 +137,7 @@ export function Countdown() {
           <div className="flex items-center justify-between text-xs uppercase tracking-[0.25em] text-fg-soft mb-2">
             <span>Journey begins</span>
             <span className="text-accent font-display text-sm">{progressPct}%</span>
-            <span>{isBirthday ? 'The big day' : 'Wedding day'}</span>
+            <span>{copy.eventLabel || 'The big day'}</span>
           </div>
           <div className="h-1.5 w-full rounded-full bg-accent/15 overflow-hidden">
             <motion.div
@@ -136,7 +156,7 @@ export function Countdown() {
 
       {c.isPast && (
         <p className="mt-10 text-center font-script text-3xl text-accent">
-          Today is the day! Thank you for sharing it with us.
+          {copy.todayMessage || 'Today is the day! Thank you for celebrating with us.'}
         </p>
       )}
     </Section>

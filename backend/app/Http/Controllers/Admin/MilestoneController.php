@@ -16,14 +16,14 @@ class MilestoneController extends Controller
 
     public function store(StoreMilestoneRequest $request, Invitation $invitation): Milestone
     {
-        $this->authorizeInvitation($invitation, $request->user());
+        $this->authorizeInvitationEdit($invitation, $request->user());
 
         return $invitation->milestones()->create($request->validated());
     }
 
     public function update(StoreMilestoneRequest $request, Invitation $invitation, Milestone $milestone): Milestone
     {
-        $this->authorizeInvitation($invitation, $request->user());
+        $this->authorizeInvitationEdit($invitation, $request->user());
 
         $milestone = $invitation->milestones()->findOrFail($milestone->id);
         $milestone->update($request->validated());
@@ -33,7 +33,7 @@ class MilestoneController extends Controller
 
     public function destroy(Request $request, Invitation $invitation, Milestone $milestone): JsonResponse
     {
-        $this->authorizeInvitation($invitation, $request->user());
+        $this->authorizeInvitationEdit($invitation, $request->user());
 
         $invitation->milestones()->whereKey($milestone->id)->firstOrFail()->delete();
 

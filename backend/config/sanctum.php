@@ -50,7 +50,10 @@ return [
     |
     */
 
-    'expiration' => null,
+    // Admin/client login tokens expire after a week by default (stored in
+    // localStorage, so they shouldn't live forever). Pruned daily — see
+    // routes/console.php.
+    'expiration' => (int) env('SANCTUM_TOKEN_EXPIRATION', 60 * 24 * 7) ?: null,
 
     /*
     |--------------------------------------------------------------------------

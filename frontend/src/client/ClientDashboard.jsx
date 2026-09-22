@@ -4,25 +4,23 @@
 // admin for now, per product decision). Clients can view their public
 // link and drill into RSVPs/wishes for each invitation they own.
 //
-// If the client owns exactly one invitation, we skip this list screen
-// entirely and route straight to its detail view (see App.jsx) — nicer
-// "log in and immediately see your RSVPs" experience for the common case.
+// If the client owns exactly one invitation, ClientHome skips this list
+// screen entirely and routes straight to its RSVPs; otherwise it renders
+// this with the list it already fetched.
 
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ExternalLink, MessageSquare, Users } from 'lucide-react';
-import { adminListInvitations } from '../lib/api.js';
 import { loadEventTypes } from '../lib/eventTypes.js';
 import { getEventTypeIcon } from '../lib/eventTypeIcons.js';
 
-export default function ClientDashboard() {
-  const [invitations, setInvitations] = useState(null);
+export default function ClientDashboard({ invitations }) {
   const [eventTypes, setEventTypes] = useState(null);
 
   useEffect(() => {
-    adminListInvitations({ per_page: 100 }).then(({ data }) => setInvitations(data));
-    loadEventTypes().then(setEventTypes);
+    // Only used for labels/icons — the list still renders without it.
+    loadEventTypes().then(setEventTypes).catch(() => {});
   }, []);
 
   return (
@@ -33,13 +31,12 @@ export default function ClientDashboard() {
       </p>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {invitations === null && <p className="text-fg-soft">Loading…</p>}
-        {invitations?.length === 0 && (
+        {invitations.length === 0 && (
           <p className="text-fg-soft">
             No invitations linked to your account yet — reach out if that doesn't look right.
           </p>
         )}
-        {invitations?.map((inv) => {
+        {invitations.map((inv) => {
           const Icon = getEventTypeIcon(eventTypes?.[inv.type]?.icon);
           return (
           <motion.div

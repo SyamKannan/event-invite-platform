@@ -1,11 +1,11 @@
 # Invitations Platform
 
-A multi-tenant wedding & birthday invitation platform. One deployment serves every invitation — each gets its own link (`/i/{slug}`) and is fully manageable through an admin dashboard (names, photos, dates, schedule, theme, RSVPs, guestbook) with no code edits and no per-event domain purchase.
+A multi-tenant invitation platform (weddings, birthdays, house warmings, anniversaries and 6 more event types). One deployment serves every invitation — each gets its own link (`/i/{slug}`) and is fully manageable through an admin dashboard (names, photos, dates, schedule, theme, RSVPs, guestbook) with no code edits and no per-event domain purchase.
 
 - **[`backend/`](backend/)** — Laravel 13 JSON API (PHP 8.4, MySQL). Owns all invitation data and admin auth.
 - **[`frontend/`](frontend/)** — Vite + React 18 + Tailwind CSS + Framer Motion. Renders any invitation by slug and hosts the `/admin` dashboard.
 
-See [`CLAUDE.md`](CLAUDE.md) for the full architecture, data model, and known gotchas (in particular the Sanctum CSRF setup and the fixed port numbers below).
+See [`CLAUDE.md`](CLAUDE.md) for the full architecture, data model, and known gotchas (in particular the bearer-token auth, the client/admin role split, and the fixed port numbers below).
 
 ## Quick start
 
@@ -22,13 +22,15 @@ CREATE DATABASE wedding_invites CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
 ```bash
 cd backend
 composer install
-cp .env.example .env   # then set DB_* and FRONTEND_URLS/SANCTUM_STATEFUL_DOMAINS — see CLAUDE.md
+cp .env.example .env   # then set DB_* and FRONTEND_URLS — see CLAUDE.md
 php artisan key:generate
 php artisan migrate:fresh --seed
-php artisan serve --port=8001
+php artisan storage:link
+# PHP_INI_SCAN_DIR raises the dev server's upload limit (PHP defaults to 2 MB)
+PHP_INI_SCAN_DIR="$PWD/php-dev" php artisan serve --port=8001
 ```
 
-Runs at **http://localhost:8001**. The seeder creates one admin user and two demo invitations (`syam-and-swathi` a wedding, `priyas-30th` a birthday) — check `database/seeders/AdminUserSeeder.php` for current login credentials.
+Runs at **http://localhost:8001**. The seeder creates an admin (username `admin`), a demo client (`syam-swathi`) and two demo invitations (`syam-and-swathi` a wedding, `priyas-30th` a birthday). Passwords come from `ADMIN_PASSWORD` / `DEMO_CLIENT_PASSWORD` in `.env`; with `APP_ENV=local` and those unset, the dev defaults in `database/seeders/` are used.
 
 ### 3. Frontend
 
@@ -43,17 +45,18 @@ Runs at **http://localhost:5174** (locked in `vite.config.js` to match the backe
 - `http://localhost:5174/i/syam-and-swathi` — a live invitation
 - `http://localhost:5174/admin/login` — the admin dashboard
 
-> Both ports (8001/5174) are chosen to avoid colliding with an unrelated project's dev servers on this machine, which use the Laravel/Vite defaults (8000/5173). If you're setting this up fresh elsewhere, the defaults work fine — just update `FRONTEND_URLS`/`SANCTUM_STATEFUL_DOMAINS` in `backend/.env`, `VITE_API_URL` in `frontend/.env.local`, and `server.port` in `frontend/vite.config.js` to match whatever you pick.
+> Both ports (8001/5174) are chosen to avoid colliding with an unrelated project's dev servers on this machine, which use the Laravel/Vite defaults (8000/5173). If you're setting this up fresh elsewhere, the defaults work fine — just update `FRONTEND_URLS` in `backend/.env`, `VITE_API_URL` in `frontend/.env.local`, and `server.port` in `frontend/vite.config.js` to match whatever you pick.
 
 ## Creating a new invitation
 
 No code changes, no redeploy:
 
 1. Log into `/admin`.
-2. Click **New invitation**, choose **Wedding** or **Birthday**, pick a slug.
+2. Click **New invitation**, choose an event type, pick a slug.
 3. Use the editor's tabs (Basics, People, Date & Venue, Schedule, Story, Gallery, Theme, Contact) to fill in content and upload photos.
 4. Toggle **Published** in the Basics tab.
-5. Share `https://yourdomain.com/i/{slug}`.
+5. Share it from the RSVPs screen (WhatsApp / copy link) — shared links go through `/share/{slug}` so they get a proper preview card.
+6. Optionally assign a **client owner** (Basics tab) so the hosts can log in and watch RSVPs/wishes (view-only).
 
 ## Project structure
 
@@ -83,10 +86,18 @@ frontend/
 
 ## Deploy
 
-**Backend** deploys like any Laravel app (Forge, Vapor, a VPS). Set `DB_*`, `APP_URL`, `FRONTEND_URLS`, and `SANCTUM_STATEFUL_DOMAINS` for your production domain(s); run `php artisan storage:link` on the server for uploaded images to be servable.
+**Backend** deploys like any Laravel app (Railway, Forge, a VPS). Set:
+
+- `APP_ENV=production`, `APP_DEBUG=false`, `APP_KEY`, `APP_URL`, `DB_*`
+- `FRONTEND_URLS` — your frontend origin(s), comma-separated; the first is the canonical site `/share/{slug}` redirects to
+- `ADMIN_PASSWORD` before seeding (otherwise a random one is generated and printed once)
+- `UPLOADS_DISK=r2` plus `R2_*` — container disks (Railway) are wiped on redeploy, so uploads must live in object storage
+- a persistent `CACHE_STORE` (`database` or `redis`) — rate limiting depends on it
+
+Run `php artisan migrate --force` on every deploy, and `php artisan schedule:run` every minute via cron (prunes expired login tokens and orphaned uploads). `public/.user.ini` raises PHP-FPM's upload limits; if your host doesn't read it, set `upload_max_filesize=20M` / `post_max_size=25M` another way.
 
 **Frontend** is static — deploy `frontend/dist/` (after `npm run build`) to Vercel, Netlify, Cloudflare Pages, or any static host, with `VITE_API_URL` pointed at your deployed backend.
 
 ## License
 
-MIT — fork it for every wedding (or birthday) in your family.
+MIT — fork it for every celebration in your family.

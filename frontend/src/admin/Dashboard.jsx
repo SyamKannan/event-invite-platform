@@ -8,24 +8,17 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   ChevronLeft, ChevronRight, ExternalLink, LayoutGrid, MessageSquare,
-  Plus, Search, Share2, Sparkles, Users, X,
+  Plus, Search, Share2, Sparkles, Trash2, Users, X,
 } from 'lucide-react';
 import {
-  adminCreateInvitation, adminGetDashboardStats, adminListInvitations, adminUpdateInvitation,
+  adminCreateInvitation, adminDeleteInvitation, adminGetDashboardStats, adminListInvitations, errorMessage,
 } from '../lib/api.js';
 import { loadEventTypes } from '../lib/eventTypes.js';
 import { getEventTypeIcon } from '../lib/eventTypeIcons.js';
 import { whatsappShareUrl } from '../lib/share.js';
 import DashboardStats from './DashboardStats.jsx';
 import { findThemePreset, THEME_PRESETS } from './themePresets.js';
-
-const STORY_LAYOUT_LABELS = {
-  constellation: 'Constellation',
-  timeline: 'Timeline',
-  horizontal: 'Horizontal scroll',
-  stacked: 'Stacked',
-  mosaic: 'Mosaic',
-};
+import { storyLayoutName } from '../lib/storyLayouts.js';
 
 function ThemeSwatch({ theme }) {
   if (!theme) return null;
@@ -51,6 +44,7 @@ export default function Dashboard() {
   const [eventTypes, setEventTypes] = useState(null);
   const [stats, setStats] = useState(null);
   const [creating, setCreating] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [newSlug, setNewSlug] = useState('');
   const [newType, setNewType] = useState('wedding');
   const [error, setError] = useState(null);
@@ -65,7 +59,7 @@ export default function Dashboard() {
   const [page, setPage] = useState(1);
 
   useEffect(() => {
-    loadEventTypes().then(setEventTypes);
+    loadEventTypes().then(setEventTypes).catch(() => {});
     adminGetDashboardStats().then(setStats).catch(() => {});
   }, []);
 
@@ -90,7 +84,7 @@ export default function Dashboard() {
         setInvitations(data);
         setMeta(pageMeta);
       })
-      .catch((err) => setListError(err.message));
+      .catch((err) => setListError(errorMessage(err, 'Could not load invitations.')));
   }, [typeFilter, statusFilter, search, page]);
 
   useEffect(() => {
@@ -110,19 +104,18 @@ export default function Dashboard() {
   async function handleCreate(e) {
     e.preventDefault();
     setError(null);
+    setSubmitting(true);
     try {
-      const invitation = await adminCreateInvitation({ slug: newSlug.trim(), type: newType });
-
-      // Seed the invitation's theme from its event type's registry-declared
-      // default preset (e.g. a business_opening starts bold/bright, not
-      // whatever wedding's default is) — the backend intentionally doesn't
-      // resolve theme presets itself (the actual RGB values only live here,
-      // in THEME_PRESETS, to avoid duplicating the palette on both sides).
+      // The type's default palette is resolved here (the RGB values only
+      // live in THEME_PRESETS) and sent WITH the create, so it's one atomic
+      // request — no half-created invitation if a second call failed.
       const presetKey = eventTypes?.[newType]?.defaultThemePreset;
       const preset = presetKey && THEME_PRESETS.find((p) => p.key === presetKey);
-      if (preset) {
-        await adminUpdateInvitation(invitation.id, { theme: preset.theme });
-      }
+      await adminCreateInvitation({
+        slug: newSlug.trim(),
+        type: newType,
+        ...(preset ? { theme: preset.theme } : {}),
+      });
 
       setNewSlug('');
       setCreating(false);
@@ -137,7 +130,27 @@ export default function Dashboard() {
 
       adminGetDashboardStats().then(setStats).catch(() => {});
     } catch (err) {
-      setError(err.errors?.slug?.[0] || err.message);
+      setError(errorMessage(err));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleDelete(inv) {
+    const typed = window.prompt(
+      `Delete "${inv.slug}" permanently?\n\nThis removes the invitation, all its RSVPs and wishes, and its uploaded photos. It cannot be undone.\n\nType the slug to confirm:`,
+    );
+    if (typed === null) return;
+    if (typed.trim() !== inv.slug) {
+      window.alert('The slug did not match — nothing was deleted.');
+      return;
+    }
+    try {
+      await adminDeleteInvitation(inv.id);
+      fetchInvitations();
+      adminGetDashboardStats().then(setStats).catch(() => {});
+    } catch (err) {
+      setListError(errorMessage(err, 'Could not delete the invitation.'));
     }
   }
 
@@ -195,14 +208,17 @@ export default function Dashboard() {
               onChange={(e) => setNewSlug(e.target.value)}
               placeholder="aisha-and-rahul"
               required
+              pattern="[A-Za-z0-9_-]+"
+              title="Letters, numbers, dashes and underscores only"
               className="mt-2 w-full rounded-xl border border-ink/15 bg-white px-4 py-2.5 outline-none"
             />
           </label>
           <button
             type="submit"
-            className="rounded-full bg-accent px-6 py-2.5 text-xs uppercase tracking-[0.2em] text-white transition hover:bg-gold"
+            disabled={submitting}
+            className="rounded-full bg-accent px-6 py-2.5 text-xs uppercase tracking-[0.2em] text-white transition hover:bg-gold disabled:opacity-50"
           >
-            Create
+            {submitting ? 'Creating…' : 'Create'}
           </button>
           {error && <p className="w-full text-sm text-rose">{error}</p>}
         </motion.form>
@@ -264,7 +280,9 @@ export default function Dashboard() {
         {invitations?.map((inv) => {
           const Icon = getEventTypeIcon(eventTypes?.[inv.type]?.icon);
           const preset = findThemePreset(inv.theme);
-          const layoutLabel = STORY_LAYOUT_LABELS[inv.story_layout];
+          // Only types with a story module actually render a story layout.
+          const hasStory = eventTypes?.[inv.type]?.modules?.includes('story');
+          const layoutLabel = hasStory ? storyLayoutName(inv.story_layout) : null;
           return (
             <motion.div
               key={inv.id}
@@ -284,7 +302,7 @@ export default function Dashboard() {
               <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-fg-soft">
                 <span className="inline-flex items-center gap-1.5">
                   <ThemeSwatch theme={inv.theme} />
-                  {preset?.name || 'Custom theme'}
+                  {inv.theme ? preset?.name || 'Custom theme' : 'Default theme'}
                 </span>
                 {layoutLabel && (
                   <span className="inline-flex items-center gap-1">
@@ -312,14 +330,25 @@ export default function Dashboard() {
                 >
                   <MessageSquare size={12} /> Wishes
                 </Link>
-                <a
-                  href={whatsappShareUrl(inv.slug)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 rounded-full border border-accent/30 px-4 py-1.5 text-xs uppercase tracking-[0.15em] text-ink transition hover:bg-accent/10"
+                {/* The share page 404s for drafts, so only offer it once published. */}
+                {inv.is_published && (
+                  <a
+                    href={whatsappShareUrl(inv.slug)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 rounded-full border border-accent/30 px-4 py-1.5 text-xs uppercase tracking-[0.15em] text-ink transition hover:bg-accent/10"
+                  >
+                    <Share2 size={12} /> Share
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleDelete(inv)}
+                  aria-label={`Delete ${inv.slug}`}
+                  className="inline-flex items-center gap-1 rounded-full border border-rose/40 px-3 py-1.5 text-xs uppercase tracking-[0.15em] text-rose transition hover:bg-rose/10"
                 >
-                  <Share2 size={12} /> Share
-                </a>
+                  <Trash2 size={12} />
+                </button>
                 <a
                   href={`/i/${inv.slug}`}
                   target="_blank"
