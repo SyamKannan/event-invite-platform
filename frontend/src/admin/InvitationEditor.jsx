@@ -27,8 +27,23 @@ import { THEME_PRESETS } from './themePresets.js';
 import { ANIMATION_PRESETS } from '../lib/animationPresets.js';
 import { MapPicker } from './MapPicker.jsx';
 import { ENVELOPE_ANIMATION_LABELS } from '../components/envelope/registry.js';
+import { loadEventTypes } from '../lib/eventTypes.js';
 
-const TABS = ['Basics', 'People', 'Date & Venue', 'Schedule', 'Story', 'Gallery', 'Theme & Motion', 'Contact'];
+// Tabs that always apply regardless of event type, plus the module each
+// content tab requires — a tab is hidden unless the invitation's event type
+// registry entry declares that module. Basics/People/Theme & Motion/Contact
+// are structural (every type has people to configure and a theme), so they
+// have no module requirement.
+const ALL_TABS = [
+  { name: 'Basics' },
+  { name: 'People' },
+  { name: 'Date & Venue' },
+  { name: 'Schedule', module: 'schedule' },
+  { name: 'Story', module: 'story' },
+  { name: 'Gallery', module: 'gallery' },
+  { name: 'Theme & Motion' },
+  { name: 'Contact' },
+];
 
 export default function InvitationEditor() {
   const { id } = useParams();
@@ -37,6 +52,11 @@ export default function InvitationEditor() {
   const [invitation, setInvitation] = useState(null);
   const [savedAt, setSavedAt] = useState(null);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [eventTypes, setEventTypes] = useState(null);
+
+  useEffect(() => {
+    loadEventTypes().then(setEventTypes);
+  }, []);
 
   const tab = searchParams.get('tab') || 'Basics';
   function setTab(next) {
@@ -75,6 +95,17 @@ export default function InvitationEditor() {
 
   if (!invitation) return <p className="text-fg-soft">Loading…</p>;
 
+  // Modules this invitation's event type doesn't declare stay hidden — not
+  // just cosmetically: their fields would either save data that never
+  // renders publicly (Schedule/Gallery for a type without that module) or,
+  // for Story, submit a story_layout value against a per-type allow-list
+  // that's empty for types with no story module (validation would reject
+  // it). Falls back to showing every tab until eventTypes has loaded, so the
+  // editor never flashes an incomplete tab bar before the fetch resolves.
+  const modules = eventTypes?.[invitation.type]?.modules;
+  const visibleTabs = ALL_TABS.filter((t) => !t.module || !modules || modules.includes(t.module));
+  const effectiveTab = visibleTabs.some((t) => t.name === tab) ? tab : 'Basics';
+
   return (
     <div>
       <Link to="/admin" className="inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.2em] text-fg-soft transition hover:text-accent">
@@ -84,12 +115,12 @@ export default function InvitationEditor() {
       <h1 className="mt-3 font-display text-3xl">{invitation.slug}</h1>
 
       <div className="mt-6 flex flex-wrap gap-1 border-b border-accent/15 pb-2">
-        {TABS.map((t) => (
+        {visibleTabs.map(({ name: t }) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={`rounded-full px-4 py-2 text-xs uppercase tracking-[0.15em] transition ${
-              tab === t ? 'bg-accent text-white' : 'text-fg-soft hover:bg-accent/10'
+              effectiveTab === t ? 'bg-accent text-white' : 'text-fg-soft hover:bg-accent/10'
             }`}
           >
             {t}
@@ -98,14 +129,14 @@ export default function InvitationEditor() {
       </div>
 
       <div className="mt-8">
-        {tab === 'Basics' && <BasicsTab invitation={invitation} onSaved={(inv) => { setInvitation(inv); flash(); }} />}
-        {tab === 'People' && <PeopleTab invitation={invitation} onSaved={(inv) => { setInvitation(inv); flash(); }} />}
-        {tab === 'Date & Venue' && <DateVenueTab invitation={invitation} onSaved={(inv) => { setInvitation(inv); flash(); }} />}
-        {tab === 'Schedule' && <ScheduleTab invitation={invitation} onChange={refresh} onSaved={flash} />}
-        {tab === 'Story' && <StoryTab invitation={invitation} onChange={refresh} onSaved={(inv) => { setInvitation(inv); flash(); }} />}
-        {tab === 'Gallery' && <GalleryTab invitation={invitation} onChange={refresh} onSaved={flash} />}
-        {tab === 'Theme & Motion' && <ThemeMotionTab invitation={invitation} onSaved={(inv) => { setInvitation(inv); flash(); }} />}
-        {tab === 'Contact' && <ContactTab invitation={invitation} onSaved={(inv) => { setInvitation(inv); flash(); }} />}
+        {effectiveTab === 'Basics' && <BasicsTab invitation={invitation} onSaved={(inv) => { setInvitation(inv); flash(); }} />}
+        {effectiveTab === 'People' && <PeopleTab invitation={invitation} onSaved={(inv) => { setInvitation(inv); flash(); }} />}
+        {effectiveTab === 'Date & Venue' && <DateVenueTab invitation={invitation} onSaved={(inv) => { setInvitation(inv); flash(); }} />}
+        {effectiveTab === 'Schedule' && <ScheduleTab invitation={invitation} onChange={refresh} onSaved={flash} />}
+        {effectiveTab === 'Story' && <StoryTab invitation={invitation} eventTypes={eventTypes} onChange={refresh} onSaved={(inv) => { setInvitation(inv); flash(); }} />}
+        {effectiveTab === 'Gallery' && <GalleryTab invitation={invitation} onChange={refresh} onSaved={flash} />}
+        {effectiveTab === 'Theme & Motion' && <ThemeMotionTab invitation={invitation} onSaved={(inv) => { setInvitation(inv); flash(); }} />}
+        {effectiveTab === 'Contact' && <ContactTab invitation={invitation} onSaved={(inv) => { setInvitation(inv); flash(); }} />}
       </div>
 
       <SavedToast visible={!!savedAt} />
@@ -371,10 +402,24 @@ function OwnerSection({ invitation, onSaved }) {
   );
 }
 
-// ---- People (bride/groom or celebrant, with a show/hide toggle per side) -----
+// ---- People (roles driven by the invitation's event type registry entry) -----
+//
+// Wedding gets a bride/groom show-hide fieldset pair + connector; birthday
+// gets a single celebrant fieldset + age/turning-text. Both are unchanged
+// from before — they're literal type checks bolted onto the generic
+// role loop below, not generalized, since those fields are legacy columns
+// scoped to exactly those two types (see backend App\Support\EventTypes).
+// Any other type renders one fieldset per registry-declared role, generically.
 
 function PeopleTab({ invitation, onSaved }) {
   const isWedding = invitation.type === 'wedding';
+  const isBirthday = invitation.type === 'birthday';
+  const [roles, setRoles] = useState(null);
+
+  useEffect(() => {
+    loadEventTypes().then((types) => setRoles(types[invitation.type]?.roles || {}));
+  }, [invitation.type]);
+
   const bride = invitation.people?.find((p) => p.role === 'bride') || {};
   const groom = invitation.people?.find((p) => p.role === 'groom') || {};
   const celebrant = invitation.people?.find((p) => p.role === 'celebrant') || {};
@@ -385,11 +430,31 @@ function PeopleTab({ invitation, onSaved }) {
         connector: invitation.detail?.connector || '&',
         showBride: invitation.detail?.show_bride ?? true,
         showGroom: invitation.detail?.show_groom ?? true }
-    : { celebrantName: celebrant.first_name || '', celebrantPhoto: celebrant.photo || '',
-        celebrantAge: invitation.detail?.celebrant_age || '', turningText: invitation.detail?.celebrant_turning_text || '' });
+    : isBirthday
+      ? { celebrantName: celebrant.first_name || '', celebrantPhoto: celebrant.photo || '',
+          celebrantAge: invitation.detail?.celebrant_age || '', turningText: invitation.detail?.celebrant_turning_text || '' }
+      : {});
+
+  // For non-wedding/birthday types, form state is keyed generically by role
+  // (e.g. form.roles.owner = { firstName, parentsText, photo }).
+  const [genericPeople, setGenericPeople] = useState(() => {
+    if (isWedding || isBirthday) return {};
+    const byRole = {};
+    for (const p of invitation.people || []) {
+      byRole[p.role] = { firstName: p.first_name || '', parentsText: p.parents_text || '', photo: p.photo || '' };
+    }
+    return byRole;
+  });
 
   function set(key) {
     return (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+  }
+
+  function setGeneric(role, field) {
+    return (e) => {
+      const value = e.target.value;
+      setGenericPeople((gp) => ({ ...gp, [role]: { ...(gp[role] || {}), [field]: value } }));
+    };
   }
 
   async function handleUpload(key, file) {
@@ -397,26 +462,43 @@ function PeopleTab({ invitation, onSaved }) {
     setForm((f) => ({ ...f, [key]: path }));
   }
 
+  async function handleGenericUpload(role, file) {
+    const { path } = await adminUploadFile(invitation.id, file, 'image');
+    setGenericPeople((gp) => ({ ...gp, [role]: { ...(gp[role] || {}), photo: path } }));
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
-    const people = isWedding
-      ? [
-          { role: 'bride', first_name: form.brideName, parents_text: form.brideParents, photo: form.bridePhoto },
-          { role: 'groom', first_name: form.groomName, parents_text: form.groomParents, photo: form.groomPhoto },
-        ]
-      : [{ role: 'celebrant', first_name: form.celebrantName, photo: form.celebrantPhoto }];
 
-    const detail = isWedding
-      ? { connector: form.connector, show_bride: form.showBride, show_groom: form.showGroom }
-      : { celebrant_age: form.celebrantAge || null, celebrant_turning_text: form.turningText };
+    let people;
+    let detail;
 
-    const updated = await adminUpdateInvitation(invitation.id, { people, detail });
+    if (isWedding) {
+      people = [
+        { role: 'bride', first_name: form.brideName, parents_text: form.brideParents, photo: form.bridePhoto },
+        { role: 'groom', first_name: form.groomName, parents_text: form.groomParents, photo: form.groomPhoto },
+      ];
+      detail = { connector: form.connector, show_bride: form.showBride, show_groom: form.showGroom };
+    } else if (isBirthday) {
+      people = [{ role: 'celebrant', first_name: form.celebrantName, photo: form.celebrantPhoto }];
+      detail = { celebrant_age: form.celebrantAge || null, celebrant_turning_text: form.turningText };
+    } else {
+      people = Object.entries(roles || {}).map(([role]) => ({
+        role,
+        first_name: genericPeople[role]?.firstName || '',
+        parents_text: genericPeople[role]?.parentsText || '',
+        photo: genericPeople[role]?.photo || '',
+      }));
+      detail = undefined;
+    }
+
+    const updated = await adminUpdateInvitation(invitation.id, { people, ...(detail ? { detail } : {}) });
     onSaved({ ...invitation, ...updated });
   }
 
   return (
     <form onSubmit={handleSubmit} className="grid max-w-2xl gap-6">
-      {isWedding ? (
+      {isWedding && (
         <div className="grid gap-6 sm:grid-cols-2">
           <fieldset className={`grid min-w-0 gap-3 rounded-2xl border border-accent/15 p-4 transition-opacity ${form.showBride ? '' : 'opacity-50'}`}>
             <legend className="flex items-center gap-2 px-1 text-xs uppercase tracking-[0.2em] text-accent">
@@ -453,7 +535,8 @@ function PeopleTab({ invitation, onSaved }) {
             </p>
           )}
         </div>
-      ) : (
+      )}
+      {isBirthday && (
         <fieldset className="grid gap-3 rounded-2xl border border-accent/15 p-4">
           <legend className="px-1 text-xs uppercase tracking-[0.2em] text-accent">Celebrant</legend>
           <Field label="First name"><input value={form.celebrantName} onChange={set('celebrantName')} className={inputClass} /></Field>
@@ -461,6 +544,28 @@ function PeopleTab({ invitation, onSaved }) {
           <Field label="Turning text (e.g. Turning 30)"><input value={form.turningText} onChange={set('turningText')} className={inputClass} /></Field>
           <PhotoField path={form.celebrantPhoto} onUpload={(f) => handleUpload('celebrantPhoto', f)} />
         </fieldset>
+      )}
+      {!isWedding && !isBirthday && (
+        roles === null ? (
+          <p className="text-sm text-fg-soft">Loading…</p>
+        ) : Object.keys(roles).length === 0 ? (
+          <p className="text-sm text-fg-soft">This event type has no people to configure.</p>
+        ) : (
+          <div className="grid gap-6 sm:grid-cols-2">
+            {Object.entries(roles).map(([role, label]) => (
+              <fieldset key={role} className="grid min-w-0 gap-3 rounded-2xl border border-accent/15 p-4">
+                <legend className="px-1 text-xs uppercase tracking-[0.2em] text-accent">{label}</legend>
+                <Field label="First name">
+                  <input value={genericPeople[role]?.firstName || ''} onChange={setGeneric(role, 'firstName')} className={inputClass} />
+                </Field>
+                <Field label="Parents text">
+                  <input value={genericPeople[role]?.parentsText || ''} onChange={setGeneric(role, 'parentsText')} className={inputClass} />
+                </Field>
+                <PhotoField path={genericPeople[role]?.photo} onUpload={(f) => handleGenericUpload(role, f)} />
+              </fieldset>
+            ))}
+          </div>
+        )
       )}
       <SaveButton />
     </form>
@@ -591,9 +696,17 @@ const STORY_LAYOUTS = [
   { key: 'mosaic', name: 'Photo Mosaic', description: 'Image-forward grid, captions on hover' },
 ];
 
-function StoryTab({ invitation, onChange, onSaved }) {
+function StoryTab({ invitation, eventTypes, onChange, onSaved }) {
   const [milestones, setMilestones] = useState(invitation.milestones || []);
   const [layout, setLayout] = useState(invitation.story_layout || 'constellation');
+
+  // Restricted to the layouts this event type's registry entry actually
+  // allows — UpdateInvitationRequest validates story_layout against the same
+  // per-type list, so offering a layout outside it would just 422 on save.
+  const allowedLayouts = eventTypes?.[invitation.type]?.storyLayouts;
+  const availableLayouts = allowedLayouts
+    ? STORY_LAYOUTS.filter((l) => allowedLayouts.includes(l.key))
+    : STORY_LAYOUTS;
 
   function update(index, key, value) {
     setMilestones((ms) => ms.map((m, i) => (i === index ? { ...m, [key]: value } : m)));
@@ -638,7 +751,7 @@ function StoryTab({ invitation, onChange, onSaved }) {
       <div>
         <p className="text-xs uppercase tracking-[0.2em] text-fg-soft">Layout</p>
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {STORY_LAYOUTS.map((l) => (
+          {availableLayouts.map((l) => (
             <button
               key={l.key}
               type="button"

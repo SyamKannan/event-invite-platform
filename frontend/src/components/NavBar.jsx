@@ -26,9 +26,14 @@ export function NavBar() {
   const config = useConfig();
   const displayName = config.type === 'birthday'
     ? config.celebrant?.firstName
-    : [config.couple?.bride?.firstName, config.couple?.groom?.firstName]
-        .filter(Boolean)
-        .join(` ${config.couple?.connector ?? '&'} `);
+    : config.couple
+      ? [config.couple?.bride?.firstName, config.couple?.groom?.firstName]
+          .filter(Boolean)
+          .join(` ${config.couple?.connector ?? '&'} `)
+      // Any other type (visiting_card, anniversary, house_warming, ...) has
+      // no couple/celebrant shape — fall back to the generic people map
+      // (see InvitationConfigResource's 'people' key) instead of a blank name.
+      : Object.values(config.people || {}).map((p) => p?.firstName).filter(Boolean).join(' & ');
 
   // Whether we've scrolled enough to show the nav
   const [visible, setVisible] = useState(false);

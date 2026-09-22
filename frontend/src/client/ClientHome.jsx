@@ -13,7 +13,9 @@ export default function ClientHome() {
   const [invitations, setInvitations] = useState(null);
 
   useEffect(() => {
-    adminListInvitations().then(setInvitations);
+    // per_page: 100 — a client will only ever own a handful of invitations,
+    // so one page is always enough to answer "do they have exactly one?".
+    adminListInvitations({ per_page: 100 }).then(({ data }) => setInvitations(data));
   }, []);
 
   if (invitations === null) {

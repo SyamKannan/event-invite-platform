@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Support\EventTypes;
 use App\Support\StoredFileUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -21,6 +22,9 @@ class InvitationConfigResource extends JsonResource
     {
         $detail = $this->detail;
         $isWedding = $this->type === 'wedding';
+        $typeConfig = EventTypes::ALL[$this->type] ?? EventTypes::ALL['wedding'];
+        $modules = $typeConfig['modules'];
+        $copy = $typeConfig['copy'];
 
         $bride = $this->people->firstWhere('role', 'bride');
         $groom = $this->people->firstWhere('role', 'groom');
@@ -29,9 +33,25 @@ class InvitationConfigResource extends JsonResource
         $showBride = $detail?->show_bride ?? true;
         $showGroom = $detail?->show_groom ?? true;
 
+        // Generic role => {firstName, parents, photo} map, populated for
+        // every type (including wedding/birthday) so new-type frontend
+        // components can read people.* without needing couple/celebrant's
+        // hardcoded shape. Additive only — couple/celebrant below are
+        // unchanged for wedding/birthday.
+        $people = collect($typeConfig['roles'])->keys()->mapWithKeys(function ($role) {
+            $person = $this->people->firstWhere('role', $role);
+
+            return [$role => [
+                'firstName' => $person?->first_name,
+                'parents' => $person?->parents_text,
+                'photo' => $this->photoUrl($person?->photo),
+            ]];
+        })->all();
+
         return [
             'slug' => $this->slug,
             'type' => $this->type,
+            'modules' => $modules,
             'storyLayout' => $this->story_layout ?? 'constellation',
             'animationIntensity' => $this->animation_intensity ?? 'balanced',
 
@@ -61,6 +81,8 @@ class InvitationConfigResource extends JsonResource
                 'turningText' => $detail?->celebrant_turning_text,
             ] : null,
 
+            'people' => $people,
+
             'weddingDateISO' => $detail?->event_date?->toIso8601String(),
             'display' => [
                 'date' => $detail?->display_date,
@@ -76,15 +98,20 @@ class InvitationConfigResource extends JsonResource
             ],
 
             'hero' => [
+                'enabled' => in_array('hero', $modules, true),
                 'backgroundImage' => $this->photoUrl($detail?->hero_image),
                 'overline' => $detail?->hero_overline,
                 'tagline' => $detail?->hero_tagline,
             ],
 
+            'countdown' => [
+                'enabled' => in_array('countdown', $modules, true),
+            ],
+
             'story' => [
-                'enabled' => $this->milestones->isNotEmpty(),
-                'title' => 'Our Journey',
-                'subtitle' => 'A few moments along the way',
+                'enabled' => in_array('story', $modules, true) && $this->milestones->isNotEmpty(),
+                'title' => $copy['story.title'] ?? 'Our Journey',
+                'subtitle' => $copy['story.subtitle'] ?? 'A few moments along the way',
                 'milestones' => $this->milestones->map(fn ($m) => [
                     'x' => $m->x,
                     'y' => $m->y,
@@ -96,9 +123,9 @@ class InvitationConfigResource extends JsonResource
             ],
 
             'schedule' => [
-                'enabled' => $this->scheduleEvents->isNotEmpty(),
-                'title' => $isWedding ? 'The Celebration' : 'Party Details',
-                'subtitle' => $isWedding ? 'Join us across these moments' : 'We would love to see you there',
+                'enabled' => in_array('schedule', $modules, true) && $this->scheduleEvents->isNotEmpty(),
+                'title' => $copy['schedule.title'] ?? 'The Celebration',
+                'subtitle' => $copy['schedule.subtitle'] ?? 'Join us across these moments',
                 // Only show a side's tab when at least one event is actually
                 // assigned to it — a lone Groom-side event shouldn't produce
                 // a Bride Side tab that just leads to an empty list.
@@ -128,21 +155,19 @@ class InvitationConfigResource extends JsonResource
             ],
 
             'rsvp' => [
-                'enabled' => true,
-                'title' => 'Be Our Guest',
-                'message' => $isWedding
-                    ? '"Your presence will add an extra touch of joy to our celebration. We would be absolutely honoured to have you stand with us as we say \'I do\'."'
-                    : '"Come celebrate with us — your presence is the best gift of all."',
-                'acceptLabel' => 'Joyfully Accept',
-                'declineLabel' => 'Regretfully Decline',
-                'acceptThankyou' => 'We can\'t wait to celebrate with you!',
-                'declineThankyou' => 'You\'ll be in our hearts that day.',
+                'enabled' => in_array('rsvp', $modules, true),
+                'title' => $copy['rsvp.title'] ?? 'Be Our Guest',
+                'message' => $copy['rsvp.message'] ?? '"Come celebrate with us — your presence is the best gift of all."',
+                'acceptLabel' => $copy['rsvp.acceptLabel'] ?? 'Joyfully Accept',
+                'declineLabel' => $copy['rsvp.declineLabel'] ?? 'Regretfully Decline',
+                'acceptThankyou' => $copy['rsvp.acceptThankyou'] ?? 'We can\'t wait to celebrate with you!',
+                'declineThankyou' => $copy['rsvp.declineThankyou'] ?? 'You\'ll be in our hearts that day.',
             ],
 
             'gallery' => [
-                'enabled' => $this->galleryImages->isNotEmpty(),
-                'title' => 'Moments',
-                'subtitle' => 'A little glimpse into us',
+                'enabled' => in_array('gallery', $modules, true) && $this->galleryImages->isNotEmpty(),
+                'title' => $copy['gallery.title'] ?? 'Moments',
+                'subtitle' => $copy['gallery.subtitle'] ?? 'A little glimpse into us',
                 'images' => $this->galleryImages->map(fn ($g) => [
                     'src' => $this->photoUrl($g->image),
                     'alt' => $g->alt,
@@ -151,9 +176,9 @@ class InvitationConfigResource extends JsonResource
             ],
 
             'guestbook' => [
-                'enabled' => true,
-                'title' => 'Wishes & Blessings',
-                'subtitle' => 'Leave a note we will treasure forever',
+                'enabled' => in_array('guestbook', $modules, true),
+                'title' => $copy['guestbook.title'] ?? 'Wishes & Blessings',
+                'subtitle' => $copy['guestbook.subtitle'] ?? 'Leave a note we will treasure forever',
             ],
 
             'music' => [
@@ -164,6 +189,7 @@ class InvitationConfigResource extends JsonResource
             ],
 
             'theme' => $this->theme,
+            'extra' => $detail?->extra ?? [],
 
             'contact' => [
                 'bridePhone' => $detail?->contact_phone_primary,

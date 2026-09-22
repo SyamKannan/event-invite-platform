@@ -10,12 +10,14 @@ use App\Http\Controllers\Admin\RsvpController as AdminRsvpController;
 use App\Http\Controllers\Admin\ScheduleEventController;
 use App\Http\Controllers\Admin\UploadController;
 use App\Http\Controllers\Admin\WishController as AdminWishController;
+use App\Http\Controllers\Public\EventTypeController;
 use App\Http\Controllers\Public\InvitationController as PublicInvitationController;
 use App\Http\Controllers\Public\RsvpController as PublicRsvpController;
 use App\Http\Controllers\Public\WishController as PublicWishController;
 use Illuminate\Support\Facades\Route;
 
 // ---- Public routes (no auth) — consumed by the invitation page itself. ----
+Route::get('event-types', [EventTypeController::class, 'index']);
 Route::get('invitations/{slug}', [PublicInvitationController::class, 'show']);
 Route::post('invitations/{slug}/rsvp', [PublicRsvpController::class, 'store']);
 Route::get('invitations/{slug}/wishes', [PublicWishController::class, 'index']);
@@ -28,6 +30,7 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function (): void {
     Route::post('logout', [AuthController::class, 'logout']);
     Route::get('me', [AuthController::class, 'me']);
 
+    Route::get('invitations/stats', [AdminInvitationController::class, 'stats']);
     Route::apiResource('invitations', AdminInvitationController::class)->except(['update'])->parameters([
         'invitations' => 'invitation',
     ]);

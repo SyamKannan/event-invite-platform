@@ -11,14 +11,18 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Cake, ExternalLink, Heart, MessageSquare, Users } from 'lucide-react';
+import { ExternalLink, MessageSquare, Users } from 'lucide-react';
 import { adminListInvitations } from '../lib/api.js';
+import { loadEventTypes } from '../lib/eventTypes.js';
+import { getEventTypeIcon } from '../lib/eventTypeIcons.js';
 
 export default function ClientDashboard() {
   const [invitations, setInvitations] = useState(null);
+  const [eventTypes, setEventTypes] = useState(null);
 
   useEffect(() => {
-    adminListInvitations().then(setInvitations);
+    adminListInvitations({ per_page: 100 }).then(({ data }) => setInvitations(data));
+    loadEventTypes().then(setEventTypes);
   }, []);
 
   return (
@@ -35,7 +39,9 @@ export default function ClientDashboard() {
             No invitations linked to your account yet — reach out if that doesn't look right.
           </p>
         )}
-        {invitations?.map((inv) => (
+        {invitations?.map((inv) => {
+          const Icon = getEventTypeIcon(eventTypes?.[inv.type]?.icon);
+          return (
           <motion.div
             key={inv.id}
             initial={{ opacity: 0, y: 12 }}
@@ -43,8 +49,8 @@ export default function ClientDashboard() {
             className="rounded-2xl border border-accent/20 bg-surface p-6 text-ink shadow-[0_10px_30px_-20px_rgba(0,0,0,0.5)]"
           >
             <div className="flex items-center gap-2 text-accent">
-              {inv.type === 'wedding' ? <Heart size={16} fill="currentColor" /> : <Cake size={16} />}
-              <span className="text-xs uppercase tracking-[0.2em]">{inv.type}</span>
+              <Icon size={16} />
+              <span className="text-xs uppercase tracking-[0.2em]">{eventTypes?.[inv.type]?.label || inv.type}</span>
               {!inv.is_published && (
                 <span className="ml-auto rounded-full bg-ink/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted">Draft</span>
               )}
@@ -74,7 +80,8 @@ export default function ClientDashboard() {
               </a>
             </div>
           </motion.div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Support\EventTypes;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreInvitationRequest extends FormRequest
 {
@@ -18,7 +20,7 @@ class StoreInvitationRequest extends FormRequest
     {
         return [
             'slug' => ['required', 'string', 'max:80', 'alpha_dash', 'unique:invitations,slug'],
-            'type' => ['required', 'in:wedding,birthday'],
+            'type' => ['required', Rule::in(array_keys(EventTypes::ALL))],
             'owner_id' => ['sometimes', 'nullable', 'exists:users,id'],
         ];
     }

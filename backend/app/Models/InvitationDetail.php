@@ -37,6 +37,7 @@ class InvitationDetail extends Model
         'show_groom',
         'celebrant_age',
         'celebrant_turning_text',
+        'extra',
     ];
 
     protected function casts(): array
@@ -47,6 +48,7 @@ class InvitationDetail extends Model
             'floating_decor_enabled' => 'boolean',
             'show_bride' => 'boolean',
             'show_groom' => 'boolean',
+            'extra' => 'array',
         ];
     }
 

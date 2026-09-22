@@ -23,6 +23,8 @@ class InvitationResource extends JsonResource
             'is_published' => $this->is_published,
             'owner_id' => $this->owner_id,
             'theme' => $this->theme,
+            'story_layout' => $this->story_layout,
+            'animation_intensity' => $this->animation_intensity,
             'meta_title' => $this->meta_title,
             'meta_description' => $this->meta_description,
             'created_at' => $this->created_at?->toIso8601String(),

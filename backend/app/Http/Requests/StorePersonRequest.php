@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\EventTypes;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -17,9 +18,8 @@ class StorePersonRequest extends FormRequest
      */
     public function rules(): array
     {
-        $allowedRoles = $this->route('invitation')->type === 'wedding'
-            ? ['bride', 'groom']
-            : ['celebrant'];
+        $type = $this->route('invitation')->type;
+        $allowedRoles = array_keys(EventTypes::ALL[$type]['roles'] ?? []);
 
         return [
             'role' => ['required', Rule::in($allowedRoles)],

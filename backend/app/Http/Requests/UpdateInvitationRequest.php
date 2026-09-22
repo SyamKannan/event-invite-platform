@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Support\EnvelopeAnimations;
+use App\Support\EventTypes;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -21,7 +22,8 @@ class UpdateInvitationRequest extends FormRequest
         $invitation = $this->route('invitation');
         $invitationId = $invitation->id;
         $isWedding = $invitation->type === 'wedding';
-        $allowedRoles = $isWedding ? ['bride', 'groom'] : ['celebrant'];
+        $typeConfig = EventTypes::ALL[$invitation->type] ?? EventTypes::ALL['wedding'];
+        $allowedRoles = array_keys($typeConfig['roles']);
 
         return [
             // Basics
@@ -30,7 +32,7 @@ class UpdateInvitationRequest extends FormRequest
             'meta_title' => ['sometimes', 'nullable', 'string', 'max:255'],
             'meta_description' => ['sometimes', 'nullable', 'string', 'max:500'],
             'theme' => ['sometimes', 'nullable', 'array'],
-            'story_layout' => ['sometimes', 'string', Rule::in(['constellation', 'timeline', 'horizontal', 'stacked', 'mosaic'])],
+            'story_layout' => ['sometimes', 'string', Rule::in($typeConfig['storyLayouts'])],
             'animation_intensity' => ['sometimes', 'string', Rule::in(['subtle', 'balanced', 'playful'])],
             'owner_id' => ['sometimes', 'nullable', 'exists:users,id'],
 
@@ -59,15 +61,17 @@ class UpdateInvitationRequest extends FormRequest
             'detail.show_groom' => [$isWedding ? 'sometimes' : 'prohibited', 'boolean'],
             'detail.celebrant_age' => [$isWedding ? 'prohibited' : 'sometimes', 'nullable', 'integer', 'min:0', 'max:150'],
             'detail.celebrant_turning_text' => [$isWedding ? 'prohibited' : 'sometimes', 'nullable', 'string', 'max:60'],
+            'detail.extra' => ['sometimes', 'nullable', 'array'],
 
-            // People (bride/groom, or celebrant) — replaced wholesale on save.
-            // Role set is restricted to the invitation's own type so a wedding/birthday
-            // can never end up with the other type's person rows.
+            // People (bride/groom, or celebrant, or a new type's roles) —
+            // replaced wholesale on save. Role set is restricted to the
+            // invitation's own type so an invitation can never end up with
+            // another type's person rows.
             'people' => ['sometimes', 'array'],
             'people.*.role' => ['required_with:people', Rule::in($allowedRoles)],
             'people.*.first_name' => ['required_with:people', 'string', 'max:60'],
             'people.*.parents_text' => ['sometimes', 'nullable', 'string', 'max:255'],
             'people.*.photo' => ['sometimes', 'nullable', 'string'],
-        ];
+        ] + EventTypes::extraValidationRules($invitation->type);
     }
 }

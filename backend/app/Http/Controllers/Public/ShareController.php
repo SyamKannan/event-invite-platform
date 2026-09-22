@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Public;
 use App\Http\Controllers\Controller;
 use App\Models\Invitation;
 use App\Models\InvitationDetail;
+use App\Support\EventTypes;
 use App\Support\StoredFileUrl;
 use Illuminate\View\View;
 
@@ -34,7 +35,7 @@ class ShareController extends Controller
         $isWedding = $invitation->type === 'wedding';
 
         $title = $invitation->meta_title ?: $this->defaultTitle($invitation, $isWedding);
-        $description = $invitation->meta_description ?: $this->defaultDescription($detail, $isWedding);
+        $description = $invitation->meta_description ?: $this->defaultDescription($detail, $isWedding, $invitation->type);
         $image = $this->resolveImage($invitation, $detail);
         $frontendUrl = rtrim(explode(',', config('cors.allowed_origins')[0] ?? 'http://localhost:5174')[0], '/');
 
@@ -57,12 +58,16 @@ class ShareController extends Controller
             return $names ? implode(' & ', $names).' are getting married!' : "You're invited!";
         }
 
-        $celebrant = $invitation->people->firstWhere('role', 'celebrant');
+        if ($invitation->type === 'birthday') {
+            $celebrant = $invitation->people->firstWhere('role', 'celebrant');
 
-        return $celebrant?->first_name ? "It's {$celebrant->first_name}'s birthday!" : "You're invited!";
+            return $celebrant?->first_name ? "It's {$celebrant->first_name}'s birthday!" : "You're invited!";
+        }
+
+        return "You're invited!";
     }
 
-    private function defaultDescription(?InvitationDetail $detail, bool $isWedding): string
+    private function defaultDescription(?InvitationDetail $detail, bool $isWedding, string $type): string
     {
         $when = $detail?->display_date;
         $where = $detail?->display_location;
@@ -71,9 +76,20 @@ class ShareController extends Controller
             return "Join us on {$when} at {$where}.";
         }
 
-        return $isWedding
-            ? 'Join us as we celebrate our wedding.'
-            : "You're invited to celebrate with us.";
+        if ($isWedding) {
+            return 'Join us as we celebrate our wedding.';
+        }
+
+        if ($type === 'birthday') {
+            return "You're invited to celebrate with us.";
+        }
+
+        return "You're invited — {$this->label($type)}.";
+    }
+
+    private function label(string $type): string
+    {
+        return EventTypes::ALL[$type]['label'] ?? "You're invited";
     }
 
     private function resolveImage(Invitation $invitation, ?InvitationDetail $detail): ?string

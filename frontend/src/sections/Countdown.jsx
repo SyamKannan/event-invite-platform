@@ -69,6 +69,8 @@ export function Countdown() {
   const totalMs = 365 * 24 * 60 * 60 * 1000;
   const progressPct = Math.max(0, Math.min(100, Math.round(((totalMs - (eventMs - nowMs)) / totalMs) * 100)));
 
+  if (!config.countdown?.enabled) return null;
+
   return (
     <Section id="countdown" subtitle="counting down to forever" showOrnament={false}>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 sm:gap-6">

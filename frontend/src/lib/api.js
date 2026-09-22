@@ -54,6 +54,13 @@ export async function getInvitationConfig(slug) {
   return data;
 }
 
+// Returns App\Support\EventTypes::ALL — every event type's modules, roles,
+// default theme, story layouts, and copy strings, so the admin never has to
+// hand-duplicate that list. Not per-invitation, so no slug in the path.
+export function getEventTypes() {
+  return request('/api/event-types');
+}
+
 export function submitRsvp(slug, payload) {
   return request(`/api/invitations/${slug}/rsvp`, { method: 'POST', body: payload });
 }
@@ -86,9 +93,19 @@ export function adminMe() {
   return request('/api/admin/me', { auth: true });
 }
 
-export async function adminListInvitations() {
-  const { data } = await request('/api/admin/invitations', { auth: true });
-  return data;
+// `params` may include `type`, `status` ('published'|'draft'), `search`,
+// `page`, `per_page` — all optional, all forwarded as query params. Returns
+// the full Laravel paginator payload ({ data, meta, links }) so the caller
+// can drive pagination controls off `meta`.
+export async function adminListInvitations(params = {}) {
+  const query = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')
+  ).toString();
+  return request(`/api/admin/invitations${query ? `?${query}` : ''}`, { auth: true });
+}
+
+export function adminGetDashboardStats() {
+  return request('/api/admin/invitations/stats', { auth: true });
 }
 
 // ---------- Client accounts (admin-only: who a given invitation belongs to) --

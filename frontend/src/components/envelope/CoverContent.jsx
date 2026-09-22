@@ -36,7 +36,7 @@ export function CoverContent({ opening, exitAnimation, exitTransition }) {
         <h1 className="mt-6 font-script text-5xl sm:text-7xl text-accent leading-tight">
           {config.celebrant?.firstName}
         </h1>
-      ) : (
+      ) : config.couple ? (
         <>
           {config.couple?.bride && (
             <h1 className="mt-6 font-script text-5xl sm:text-7xl text-accent leading-tight">
@@ -52,6 +52,17 @@ export function CoverContent({ opening, exitAnimation, exitTransition }) {
             </h1>
           )}
         </>
+      ) : (
+        // Any other type — fall back to the generic people map (see
+        // InvitationConfigResource's 'people' key).
+        Object.values(config.people || {})
+          .map((p) => p?.firstName)
+          .filter(Boolean)
+          .map((name) => (
+            <h1 key={name} className="mt-6 font-script text-5xl sm:text-7xl text-accent leading-tight">
+              {name}
+            </h1>
+          ))
       )}
 
       <div className="mt-8 flex justify-center">

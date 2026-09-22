@@ -80,6 +80,8 @@ export function Hero() {
     [],
   );
 
+  if (!hero?.enabled) return null;
+
   return (
     <section
       id="home"
@@ -182,7 +184,7 @@ export function Hero() {
                 </motion.span>
               )}
             </>
-          ) : (
+          ) : couple ? (
             <>
               {couple.bride && <AnimatedName name={couple.bride.firstName} delay={0.4} />}
               {couple.bride && couple.groom && (
@@ -197,6 +199,14 @@ export function Hero() {
               )}
               {couple.groom && <AnimatedName name={couple.groom.firstName} delay={couple.bride ? 1.1 : 0.4} />}
             </>
+          ) : (
+            // Any type without a couple/celebrant shape (visiting_card,
+            // anniversary, house_warming, ...) — fall back to the generic
+            // people map (see InvitationConfigResource's 'people' key).
+            Object.values(config.people || {})
+              .map((p) => p?.firstName)
+              .filter(Boolean)
+              .map((name, i) => <AnimatedName key={name} name={name} delay={0.4 + i * 0.3} />)
           ))}
         </h1>
 

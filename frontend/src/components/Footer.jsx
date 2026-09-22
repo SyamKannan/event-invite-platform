@@ -24,9 +24,13 @@ export function Footer() {
   const c = config.contact || {};
   const displayName = config.type === 'birthday'
     ? config.celebrant?.firstName
-    : [config.couple?.bride?.firstName, config.couple?.groom?.firstName]
-        .filter(Boolean)
-        .join(` ${config.couple?.connector ?? '&'} `);
+    : config.couple
+      ? [config.couple?.bride?.firstName, config.couple?.groom?.firstName]
+          .filter(Boolean)
+          .join(` ${config.couple?.connector ?? '&'} `)
+      // Any other type has no couple/celebrant shape — fall back to the
+      // generic people map (see InvitationConfigResource's 'people' key).
+      : Object.values(config.people || {}).map((p) => p?.firstName).filter(Boolean).join(' & ');
   const [quoteIdx, setQuoteIdx] = useState(0);
 
   // Rotate the blessing quote every 5 seconds.
