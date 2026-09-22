@@ -44,7 +44,7 @@ export function WaxSeal() {
         <button
           type="button"
           onClick={handleOpen}
-          className="absolute inset-0 z-10 flex items-center justify-center cursor-pointer focus:outline-none"
+          className="absolute inset-0 z-10 flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-accent/70"
           aria-label="Break the seal to open invitation"
         >
           <div className="relative h-40 w-40">

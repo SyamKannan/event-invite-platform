@@ -238,14 +238,20 @@ export default function InvitationEditor() {
           <span className={`rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-wide ${invitation.is_published ? 'bg-accent/20 text-accent' : 'bg-fg/10 text-fg-soft'}`}>
             {invitation.is_published ? 'Published' : 'Draft'}
           </span>
-          <a
-            href={`/i/${invitation.slug}`}
-            target="_blank"
-            rel="noreferrer"
-            className="ml-auto inline-flex items-center gap-1 text-xs uppercase tracking-[0.15em] text-accent"
-          >
-            <ExternalLink size={12} /> {invitation.is_published ? 'View live' : 'Preview (publish to share)'}
-          </a>
+          {invitation.is_published ? (
+            <a
+              href={`/i/${invitation.slug}`}
+              target="_blank"
+              rel="noreferrer"
+              className="ml-auto inline-flex items-center gap-1 text-xs uppercase tracking-[0.15em] text-accent"
+            >
+              <ExternalLink size={12} /> View live
+            </a>
+          ) : (
+            <Link to={`/admin/preview/${invitation.id}`} className="ml-auto inline-flex items-center gap-1 text-xs uppercase tracking-[0.15em] text-accent">
+              <ExternalLink size={12} /> Preview draft
+            </Link>
+          )}
         </div>
 
         <div className="mt-6 flex flex-wrap gap-1 border-b border-accent/15 pb-2" role="tablist">

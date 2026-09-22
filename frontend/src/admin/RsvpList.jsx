@@ -8,14 +8,13 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Check, Copy, Download, ExternalLink, MessageCircle, RefreshCw, Share2, Trash2 } from 'lucide-react';
+import { Check, Copy, Download, ExternalLink, MessageCircle, RefreshCw, Share2, Trash2 } from 'lucide-react';
 import { adminDeleteRsvp, adminExportRsvps, adminGetInvitation, adminListRsvps, errorMessage } from '../lib/api.js';
 import { shareUrl as buildShareUrl, whatsappShareUrl } from '../lib/share.js';
-import { useAdminAuth } from '../context/AdminAuthContext.jsx';
+import { InvitationNav } from './InvitationNav.jsx';
 
 export default function RsvpList() {
   const { id } = useParams();
-  const { user } = useAdminAuth();
   const [rsvps, setRsvps] = useState(null);
   const [invitation, setInvitation] = useState(null);
   const [forbidden, setForbidden] = useState(false);
@@ -96,9 +95,7 @@ export default function RsvpList() {
 
   return (
     <div>
-      <Link to="/admin" className="inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.2em] text-fg-soft transition hover:text-accent">
-        <ArrowLeft size={14} /> {user.role === 'client' ? 'Back' : 'Back to dashboard'}
-      </Link>
+      <InvitationNav invitationId={id} invitation={invitation} />
 
       {!forbidden && invitation && (
         <div className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-accent/20 bg-surface px-5 py-4">
@@ -136,14 +133,23 @@ export default function RsvpList() {
               </button>
             </>
           )}
-          <a
-            href={publicUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-accent/30 px-4 py-2 text-xs uppercase tracking-[0.15em] text-ink transition hover:bg-accent/10"
-          >
-            <ExternalLink size={14} /> Preview
-          </a>
+          {published ? (
+            <a
+              href={publicUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-accent/30 px-4 py-2 text-xs uppercase tracking-[0.15em] text-ink transition hover:bg-accent/10"
+            >
+              <ExternalLink size={14} /> Open
+            </a>
+          ) : (
+            <Link
+              to={`/admin/preview/${id}`}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-accent/30 px-4 py-2 text-xs uppercase tracking-[0.15em] text-ink transition hover:bg-accent/10"
+            >
+              <ExternalLink size={14} /> Preview draft
+            </Link>
+          )}
         </div>
       )}
 

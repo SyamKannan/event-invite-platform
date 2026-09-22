@@ -198,6 +198,14 @@ export async function adminUpdateInvitation(id, payload) {
   return data;
 }
 
+// The public page's config for an invitation the admin/owner can see,
+// published or not — what /admin/preview/:id renders. The public endpoint
+// 404s on drafts by design, so previewing one has to go through here.
+export async function adminPreviewConfig(id) {
+  const { data } = await request(`/api/admin/invitations/${id}/preview`, { auth: true });
+  return data;
+}
+
 export function adminDeleteInvitation(id) {
   return request(`/api/admin/invitations/${id}`, { method: 'DELETE', auth: true });
 }

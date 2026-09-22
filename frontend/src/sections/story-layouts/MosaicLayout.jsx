@@ -1,5 +1,7 @@
-// PHOTO MOSAIC — an image-forward grid of story moments, captions revealed
-// on hover. Mirrors Gallery.jsx's masonry visual language for consistency.
+// PHOTO MOSAIC — an image-forward grid of story moments. Captions are
+// always visible on touch/small screens (there is no hover there, and the
+// date/title/description would otherwise be invisible on a phone) and
+// appear on hover from `sm` up. Mirrors Gallery.jsx's masonry language.
 
 import { motion } from 'framer-motion';
 
@@ -28,7 +30,7 @@ export function MosaicLayout({ milestones }) {
               <span className="font-script text-3xl">{m.date}</span>
             </div>
           )}
-          <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 via-black/10 to-transparent p-4 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+          <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/75 via-black/20 to-transparent p-4 opacity-100 transition-opacity duration-300 sm:opacity-0 sm:group-hover:opacity-100">
             <p className="text-[10px] uppercase tracking-[0.25em] text-white/70">{m.date}</p>
             <p className="font-display text-lg text-white">{m.title}</p>
             <p className="mt-1 line-clamp-2 text-xs text-white/80">{m.description}</p>

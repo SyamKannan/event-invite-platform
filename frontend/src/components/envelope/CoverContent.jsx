@@ -69,9 +69,9 @@ export function CoverContent({ opening, exitAnimation, exitTransition }) {
         <span className="divider-ornament text-accent">✦</span>
       </div>
 
-      <p className="mt-6 text-sm uppercase tracking-[0.3em] text-fg-soft">
-        {config.display.date}
-      </p>
+      {/* The date deliberately isn't shown here: the hero hides it behind
+          scratch-off coins, and printing it on the cover spoiled that.
+          Guests still see it in the schedule and footer. */}
 
       {/* The "open" pill — gently bounces */}
       <motion.div

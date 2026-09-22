@@ -4,10 +4,10 @@
 // admins can tell invitations apart by design, not just by slug).
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  ChevronLeft, ChevronRight, ExternalLink, LayoutGrid, MessageSquare,
+  ChevronLeft, ChevronRight, Eye, ExternalLink, LayoutGrid, MessageSquare,
   Plus, Search, Share2, Sparkles, Trash2, Users, X,
 } from 'lucide-react';
 import {
@@ -39,6 +39,7 @@ function ThemeSwatch({ theme }) {
 const PER_PAGE = 12;
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [invitations, setInvitations] = useState(null);
   const [meta, setMeta] = useState(null);
   const [eventTypes, setEventTypes] = useState(null);
@@ -111,7 +112,7 @@ export default function Dashboard() {
       // request — no half-created invitation if a second call failed.
       const presetKey = eventTypes?.[newType]?.defaultThemePreset;
       const preset = presetKey && THEME_PRESETS.find((p) => p.key === presetKey);
-      await adminCreateInvitation({
+      const invitation = await adminCreateInvitation({
         slug: newSlug.trim(),
         type: newType,
         ...(preset ? { theme: preset.theme } : {}),
@@ -120,15 +121,9 @@ export default function Dashboard() {
       setNewSlug('');
       setCreating(false);
 
-      // Jump to a clean, unfiltered first page so the invitation just
-      // created is guaranteed to be visible (it may not match the admin's
-      // current type/status/search filters), then force a refetch — the
-      // filter-watching effect alone won't refire when filters were already
-      // empty, since resetFilters() wouldn't actually change any state.
-      resetFilters();
-      fetchInvitations();
-
-      adminGetDashboardStats().then(setStats).catch(() => {});
+      // Straight into the editor: a blank invitation always needs content
+      // next, so making the admin hunt for its card first is busywork.
+      navigate(`/admin/invitations/${invitation.id}`);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -349,14 +344,25 @@ export default function Dashboard() {
                 >
                   <Trash2 size={12} />
                 </button>
-                <a
-                  href={`/i/${inv.slug}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="ml-auto inline-flex items-center gap-1 text-xs uppercase tracking-[0.15em] text-accent"
-                >
-                  <ExternalLink size={12} /> View
-                </a>
+                {/* /i/{slug} only serves published invitations, so a draft
+                    links to the authenticated preview instead of a 404. */}
+                {inv.is_published ? (
+                  <a
+                    href={`/i/${inv.slug}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="ml-auto inline-flex items-center gap-1 text-xs uppercase tracking-[0.15em] text-accent"
+                  >
+                    <ExternalLink size={12} /> View
+                  </a>
+                ) : (
+                  <Link
+                    to={`/admin/preview/${inv.id}`}
+                    className="ml-auto inline-flex items-center gap-1 text-xs uppercase tracking-[0.15em] text-accent"
+                  >
+                    <Eye size={12} /> Preview
+                  </Link>
+                )}
               </div>
             </motion.div>
           );

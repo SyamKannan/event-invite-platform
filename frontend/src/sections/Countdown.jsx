@@ -43,7 +43,7 @@ function RingProgress({ value, max, size = 80 }) {
         cy={size / 2}
         r={radius}
         fill="none"
-        stroke="rgba(212,168,95,0.12)"
+        stroke="rgb(var(--color-accent) / 0.12)"
         strokeWidth="2"
       />
       {/* Fill */}
@@ -52,7 +52,7 @@ function RingProgress({ value, max, size = 80 }) {
         cy={size / 2}
         r={radius}
         fill="none"
-        stroke="rgba(212,168,95,0.5)"
+        stroke="rgb(var(--color-accent) / 0.5)"
         strokeWidth="2"
         strokeLinecap="round"
         strokeDasharray={circumference}

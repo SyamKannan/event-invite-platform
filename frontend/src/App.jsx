@@ -13,6 +13,7 @@ const HomeRouter = lazy(() => import('./admin/HomeRouter.jsx'));
 const InvitationEditor = lazy(() => import('./admin/InvitationEditor.jsx'));
 const RsvpList = lazy(() => import('./admin/RsvpList.jsx'));
 const WishList = lazy(() => import('./admin/WishList.jsx'));
+const InvitationPreview = lazy(() => import('./admin/InvitationPreview.jsx'));
 
 function Loading() {
   return (
@@ -35,6 +36,9 @@ export default function App() {
             <Route path="/i/:slug" element={<InvitationPage />} />
 
             <Route path="/admin/login" element={<Login />} />
+            {/* Outside AdminLayout: a preview needs the whole viewport, not
+                the admin shell. It gates on auth itself. */}
+            <Route path="/admin/preview/:id" element={<InvitationPreview />} />
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<HomeRouter />} />
               <Route path="invitations/:id" element={<InvitationEditor />} />

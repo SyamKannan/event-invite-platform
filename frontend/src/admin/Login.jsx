@@ -1,13 +1,17 @@
 // ADMIN LOGIN — username/password, exchanged for a Sanctum bearer token.
 
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Heart, LogIn } from 'lucide-react';
 import { adminLogin, adminMe, errorMessage, getAdminToken } from '../lib/api.js';
 
 export default function Login() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // Only in-app paths, so ?next= can't be used to bounce someone offsite.
+  const nextRaw = searchParams.get('next') || '';
+  const next = nextRaw.startsWith('/admin') ? nextRaw : '/admin';
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
@@ -16,8 +20,8 @@ export default function Login() {
   // Already signed in (valid stored token)? Skip the form.
   useEffect(() => {
     if (!getAdminToken()) return;
-    adminMe().then(() => navigate('/admin', { replace: true })).catch(() => {});
-  }, [navigate]);
+    adminMe().then(() => navigate(next, { replace: true })).catch(() => {});
+  }, [navigate, next]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -25,7 +29,7 @@ export default function Login() {
     setError(null);
     try {
       await adminLogin(username.trim(), password);
-      navigate('/admin');
+      navigate(next);
     } catch (err) {
       setError(err.status === 422 ? 'Incorrect username or password.' : errorMessage(err, 'Login failed.'));
     } finally {

@@ -67,14 +67,18 @@ export default function ClientDashboard({ invitations }) {
               >
                 <MessageSquare size={12} /> Wishes
               </Link>
-              <a
-                href={`/i/${inv.slug}`}
-                target="_blank"
-                rel="noreferrer"
-                className="ml-auto inline-flex items-center gap-1 text-xs uppercase tracking-[0.15em] text-accent"
-              >
-                <ExternalLink size={12} /> View
-              </a>
+              {inv.is_published ? (
+                <a
+                  href={`/i/${inv.slug}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="ml-auto inline-flex items-center gap-1 text-xs uppercase tracking-[0.15em] text-accent"
+                >
+                  <ExternalLink size={12} /> View
+                </a>
+              ) : (
+                <span className="ml-auto text-xs uppercase tracking-[0.15em] text-fg-soft">Not published yet</span>
+              )}
             </div>
           </motion.div>
           );

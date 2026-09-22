@@ -1,15 +1,11 @@
 // GALLERY — masonry grid with lightbox, plus a polaroid featured strip.
 //
-// NEW FEATURES:
-//   1. Polaroid-style featured strip at the top — photos slightly tilted,
-//      hover snaps them upright with a shadow pop
-//   2. Lightbox now shows caption + image counter
-//   3. Touch swipe support on mobile (drag to navigate)
-//
-// Original features kept:
-//   4. Masonry grid
-//   5. Click to open full-screen lightbox
-//   6. Arrow keys + ESC navigation
+//   1. Polaroid strip of the first few photos — tilted, hover snaps upright.
+//      Only shown when there are enough photos that the strip isn't just a
+//      duplicate of the grid below it; the grid then starts after them.
+//   2. Lightbox with caption + counter, arrow keys, ESC, and swipe
+//   3. Focus moves into the lightbox on open and back to the thumbnail on
+//      close, so it's usable from the keyboard
 
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useMotionValue, useTransform } from 'framer-motion';
@@ -34,25 +30,29 @@ export function Gallery() {
   const [openIdx, setOpenIdx] = useState(null);
   if (!gallery.enabled) return null;
 
-  // Show first 4 images as polaroids, rest in the masonry grid.
-  const polaroids = gallery.images.slice(0, 4);
-  const gridImages = gallery.images;
+  // With more than 6 photos, feature the first 4 as polaroids and start
+  // the grid after them — otherwise those 4 would appear twice on the page.
+  const featureCount = gallery.images.length > 6 ? 4 : 0;
+  const polaroids = gallery.images.slice(0, featureCount);
+  const gridImages = gallery.images.slice(featureCount);
 
   return (
     <Section id="gallery" title={gallery.title} subtitle={gallery.subtitle} size="lg">
 
       {/* ── Polaroid featured strip ─────────────────────────────────── */}
-      <div className="mb-10 flex items-end justify-center gap-3 sm:gap-5 overflow-x-auto pb-2 px-2">
-        {polaroids.map((img, i) => (
-          <PolaroidCard
-            key={i}
-            img={img}
-            tilt={POLAROID_TILTS[i] || 0}
-            onClick={() => setOpenIdx(i)}
-            delay={i * 0.1}
-          />
-        ))}
-      </div>
+      {polaroids.length > 0 && (
+        <div className="mb-10 flex items-end justify-center gap-3 sm:gap-5 overflow-x-auto pb-2 px-2">
+          {polaroids.map((img, i) => (
+            <PolaroidCard
+              key={i}
+              img={img}
+              tilt={POLAROID_TILTS[i] || 0}
+              onClick={() => setOpenIdx(i)}
+              delay={i * 0.1}
+            />
+          ))}
+        </div>
+      )}
 
       {/* ── Masonry grid ────────────────────────────────────────────── */}
       <div className="grid auto-rows-[180px] grid-cols-2 gap-3 sm:auto-rows-[220px] sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
@@ -63,12 +63,12 @@ export function Gallery() {
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true, amount: 0.2 }}
             transition={{ duration: 0.6, delay: (i % 6) * 0.05 }}
-            onClick={() => setOpenIdx(i)}
+            onClick={() => setOpenIdx(featureCount + i)}
             className={
-              'group relative overflow-hidden rounded-xl bg-fg/5 ' +
+              'group relative overflow-hidden rounded-xl bg-fg/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ' +
               (img.span ? spanClass[img.span] || '' : '')
             }
-            aria-label={`Open ${img.alt}`}
+            aria-label={img.alt ? `Open photo: ${img.alt}` : `Open photo ${featureCount + i + 1}`}
           >
             <img
               src={img.src}
@@ -101,9 +101,9 @@ function PolaroidCard({ img, tilt, onClick, delay }) {
       whileHover={{ rotate: 0, y: -8, scale: 1.05 }}
       viewport={{ once: true }}
       transition={{ duration: 0.6, delay }}
-      className="shrink-0 rounded-sm bg-surface p-2 pb-7 shadow-[0_8px_24px_-10px_rgba(0,0,0,0.5)] cursor-pointer"
+      className="shrink-0 cursor-pointer rounded-sm bg-surface p-2 pb-7 shadow-[0_8px_24px_-10px_rgba(0,0,0,0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       style={{ width: 130 }}
-      aria-label={`Open ${img.alt}`}
+      aria-label={img.alt ? `Open photo: ${img.alt}` : 'Open photo'}
     >
       <img
         src={img.src}
@@ -117,22 +117,38 @@ function PolaroidCard({ img, tilt, onClick, delay }) {
 
 // ── Lightbox ───────────────────────────────────────────────────────────────
 function Lightbox({ images, index, onClose, onChange }) {
-  const dragX = useMotionValue(0);
+  const closeRef = useRef(null);
+  const openerRef = useRef(null);
+  const open = index !== null;
+  const many = images.length > 1;
+
+  // Move focus into the dialog on open and hand it back on close, so
+  // keyboard users aren't left tabbing the page behind the overlay.
+  useEffect(() => {
+    if (!open) return;
+    openerRef.current = document.activeElement;
+    closeRef.current?.focus();
+    return () => {
+      if (openerRef.current instanceof HTMLElement) openerRef.current.focus();
+    };
+  }, [open]);
 
   useEffect(() => {
-    if (index === null) return;
+    if (!open) return;
     function handleKey(e) {
       if (e.key === 'Escape') onClose();
+      if (!many) return;
       if (e.key === 'ArrowRight') onChange((index + 1) % images.length);
       if (e.key === 'ArrowLeft') onChange((index - 1 + images.length) % images.length);
     }
+    const previousOverflow = document.body.style.overflow;
     window.addEventListener('keydown', handleKey);
     document.body.style.overflow = 'hidden';
     return () => {
       window.removeEventListener('keydown', handleKey);
-      document.body.style.overflow = '';
+      document.body.style.overflow = previousOverflow;
     };
-  }, [index, images.length, onChange, onClose]);
+  }, [open, many, index, images.length, onChange, onClose]);
 
   function handleDragEnd(_, info) {
     if (info.offset.x < -60) onChange((index + 1) % images.length);
@@ -143,6 +159,9 @@ function Lightbox({ images, index, onClose, onChange }) {
     <AnimatePresence>
       {index !== null && (
         <motion.div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Photo viewer"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -150,33 +169,40 @@ function Lightbox({ images, index, onClose, onChange }) {
           onClick={onClose}
         >
           {/* Counter */}
-          <div className="absolute top-5 left-1/2 -translate-x-1/2 rounded-full bg-white/10 px-4 py-1 text-xs uppercase tracking-widest text-white">
-            {index + 1} / {images.length}
-          </div>
+          {many && (
+            <div className="absolute top-5 left-1/2 -translate-x-1/2 rounded-full bg-white/10 px-4 py-1 text-xs uppercase tracking-widest text-white">
+              {index + 1} / {images.length}
+            </div>
+          )}
 
           <button
+            ref={closeRef}
             onClick={(e) => { e.stopPropagation(); onClose(); }}
-            className="absolute right-5 top-5 rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20"
+            className="absolute right-5 top-5 rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             aria-label="Close"
           >
             <X size={20} />
           </button>
 
-          <button
-            onClick={(e) => { e.stopPropagation(); onChange((index - 1 + images.length) % images.length); }}
-            className="absolute left-3 rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20 sm:left-8"
-            aria-label="Previous"
-          >
-            <ChevronLeft size={22} />
-          </button>
+          {many && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onChange((index - 1 + images.length) % images.length); }}
+              className="absolute left-3 rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:left-8"
+              aria-label="Previous photo"
+            >
+              <ChevronLeft size={22} />
+            </button>
+          )}
 
-          <button
-            onClick={(e) => { e.stopPropagation(); onChange((index + 1) % images.length); }}
-            className="absolute right-3 rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20 sm:right-8"
-            aria-label="Next"
-          >
-            <ChevronRight size={22} />
-          </button>
+          {many && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onChange((index + 1) % images.length); }}
+              className="absolute right-3 rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:right-8"
+              aria-label="Next photo"
+            >
+              <ChevronRight size={22} />
+            </button>
+          )}
 
           {/* Draggable image for swipe navigation */}
           <motion.div
@@ -194,9 +220,14 @@ function Lightbox({ images, index, onClose, onChange }) {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
               src={images[index].src}
-              alt={images[index].alt}
-              className="max-h-[80vh] max-w-[88vw] rounded-lg object-contain shadow-2xl"
+              alt={images[index].alt || ''}
+              className="max-h-[78vh] max-w-[88vw] rounded-lg object-contain shadow-2xl"
             />
+            {/* The caption the admin typed — previously only ever used as
+                alt text, so guests never saw it. */}
+            {images[index].alt && images[index].alt !== 'Gallery photo' && (
+              <p className="max-w-[88vw] text-center text-sm text-white/80">{images[index].alt}</p>
+            )}
           </motion.div>
         </motion.div>
       )}

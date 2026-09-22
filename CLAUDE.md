@@ -78,6 +78,7 @@ They can both apply at once (e.g. a "Playful" intensity page using the "Confetti
 
 - **Public** (no auth): `GET /api/event-types`, `GET /api/invitations/{slug}`, `POST /api/invitations/{slug}/rsvp`, `GET|POST /api/invitations/{slug}/wishes`, plus the web route `GET /share/{slug}` (server-rendered Open Graph page for link previews; 404s for drafts). The two POSTs are rate-limited (`throttle:guest-submissions`, 6/min per IP+slug, 60/hour per IP — see `AppServiceProvider`) and carry a `website` honeypot field that must stay empty.
 - **Admin** (`auth:sanctum` bearer token): `POST /api/admin/login` (`throttle:login`, 5/min per username+IP), CRUD on `/api/admin/invitations` and nested `people`/`schedule-events`/`milestones`/`gallery-images`, `POST .../upload` (multipart to `invitations/{slug}/images|audio/` on the uploads disk; returns `{path, url}`), `GET .../rsvps` (+ `/export` CSV, formula-escaped), `DELETE .../rsvps/{id}`, `GET|DELETE .../wishes`, `GET|POST|PUT|DELETE /api/admin/clients`.
+- `GET /api/admin/invitations/{invitation}/preview` returns the **public** config shape (InvitationConfigResource) for an admin/owner regardless of `is_published` — that's what `/admin/preview/:id` renders. The public `/i/{slug}` and `/share/{slug}` routes only ever serve published invitations, so any "preview this draft" UI must link to the admin route, never to `/i/{slug}`.
 - The admin `InvitationResource` adds a resolved `*_url` next to every stored file path (`hero_image_url`, `photo_url`, `image_url`, ...) — the editor uses those for previews; never build storage URLs in the frontend (it breaks on R2).
 - Rate limits need a persistent cache store (`database`/`redis`); with `CACHE_STORE=array` they reset every request.
 
@@ -137,8 +138,16 @@ admin/
                                   server-side (or shown publicly) until Save.
   themePresets.js              → curated palette list for the Theme tab (see Theme presets above)
   MapPicker.jsx                → search + embed + "use this" location picker for Schedule events
-  RsvpList.jsx, WishList.jsx   → shared by both roles — read-only views + CSV export / delete (delete
-                                  hidden for clients); ownership-scoped for free by the backend
+  RsvpList.jsx, WishList.jsx   → shared by both roles — RSVP table (+ CSV export, delete) and wishes
+                                  (delete admin-only in the UI); ownership-scoped by the backend
+  InvitationNav.jsx            → the RSVPs/Wishes/Edit/Preview link row both of those screens render.
+                                  A client owning one invitation is redirected straight to its RSVPs,
+                                  so these links are the ONLY way they reach their guestbook — don't
+                                  remove them, and keep the "My invitations" link pointing at
+                                  /admin?all=1 (plain /admin would redirect them straight back).
+  InvitationPreview.jsx        → /admin/preview/:id — the real public shell fed by the admin preview
+                                  endpoint, so drafts can be checked before publishing. Deliberately
+                                  NOT nested in AdminLayout (needs the full viewport).
 client/
   ClientHome.jsx                → client's /admin landing: straight to their one invitation's RSVPs,
                                   or ClientDashboard.jsx if they own zero/multiple
@@ -170,10 +179,11 @@ Both go through `frontend/src/lib/api.js` → the Laravel API, scoped to the cur
 
 1. **No "duplicate invitation" admin action** — creating a new invitation always starts blank.
 2. **Landing page (`/`) is a bare stub** — not a real marketing page, just links to admin login.
-3. **No wish moderation queue** — wishes go live immediately (rate limit + honeypot keep bots out; the admin can delete). An approve-first mode would need an `approved_at` column.
-4. **Changing a slug breaks already-shared links** — the editor warns, but there's no old-slug redirect table.
-5. **No frontend lint/test tooling** (no ESLint, no Vitest) — backend has PHPUnit feature tests only.
-6. **Housekeeping needs the scheduler** — `sanctum:prune-expired` (daily) and `app:prune-orphan-uploads` (weekly, deletes unreferenced uploads older than 24h; `--dry-run` first) only run if production runs `php artisan schedule:run` on a cron.
+3. **The envelope cover intentionally omits the event date** — the hero hides it behind scratch-off coins, and printing it on the cover spoiled the reveal. If you want it back, it's one block in `CoverContent.jsx`.
+4. **No wish moderation queue** — wishes go live immediately (rate limit + honeypot keep bots out; the admin can delete). An approve-first mode would need an `approved_at` column.
+5. **Changing a slug breaks already-shared links** — the editor warns, but there's no old-slug redirect table.
+6. **No frontend lint/test tooling** (no ESLint, no Vitest) — backend has PHPUnit feature tests only.
+7. **Housekeeping needs the scheduler** — `sanctum:prune-expired` (daily) and `app:prune-orphan-uploads` (weekly, deletes unreferenced uploads older than 24h; `--dry-run` first) only run if production runs `php artisan schedule:run` on a cron.
 
 ### Already fixed (do not reintroduce)
 
@@ -196,5 +206,7 @@ This project has been worked on by **multiple Claude sessions running in paralle
 - Theme colors always go through the `--color-*` CSS variables and, in the admin, through curated presets only (`themePresets.js`) — never add a raw color-code input back into the UI.
 - File uploads go through `adminUploadFile(invitationId, file, kind)` in `lib/api.js` (`kind` is `'image'` or `'audio'`, routed server-side to `invitations/{slug}/images|audio/` on the uploads disk; returns `{path, url}` — save `path`, preview with `url`). In the editor, use the `FileField` component (upload + preview + remove + error toast). `adminUploadImage` still exists as a back-compat alias.
 - Admin UI errors: show `errorMessage(err)` from `lib/api.js` (first validation message), never swallow a rejected promise.
+- Guests are overwhelmingly on phones: anything revealed only on `:hover` (captions, overlays) needs a touch-visible fallback (`opacity-100 sm:opacity-0 sm:group-hover:opacity-100`), and interactive controls keep a visible `focus-visible:ring` — don't reintroduce bare `focus:outline-none`.
+- Decorative colors come from the theme (`rgb(var(--color-accent) / …)`), never hardcoded hex/rgb — a themed invitation shouldn't render wedding-gold sparkles.
 - Backend: follow Laravel Boost's guidelines in this same `backend/CLAUDE.md`/`AGENTS.md` (curly braces always, typed params/returns, `make:` commands with `--no-interaction`, PHPDoc over inline comments) — Boost rewrote that file with framework-version-accurate rules; don't hand-edit around them.
 - Frontend and backend are independent: `npm install`/`npm run dev` in `frontend/`; composer/`artisan` commands in `backend/`. Don't mix dependency files across the boundary.

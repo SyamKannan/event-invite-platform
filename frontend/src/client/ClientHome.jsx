@@ -6,11 +6,15 @@
 // (handed the already-fetched list, so it doesn't fetch twice).
 
 import { useCallback, useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { adminListInvitations, errorMessage } from '../lib/api.js';
 import ClientDashboard from './ClientDashboard.jsx';
 
 export default function ClientHome() {
+  const [searchParams] = useSearchParams();
+  // ?all=1 means "show me the list" — otherwise a client with one
+  // invitation who clicks "My invitations" would be redirected right back.
+  const forceList = searchParams.get('all') === '1';
   const [invitations, setInvitations] = useState(null);
   const [error, setError] = useState(null);
 
@@ -44,7 +48,7 @@ export default function ClientHome() {
     return <p className="text-fg-soft">Loading…</p>;
   }
 
-  if (invitations.length === 1) {
+  if (invitations.length === 1 && !forceList) {
     return <Navigate to={`/admin/invitations/${invitations[0].id}/rsvps`} replace />;
   }
 

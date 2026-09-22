@@ -8,7 +8,7 @@
 // which one is logged in; the actual routed content (Dashboard vs.
 // ClientHome, see App.jsx) is what really differs between the two.
 
-import { Navigate, Outlet, Link, useNavigate } from 'react-router-dom';
+import { Navigate, Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Heart, LogOut } from 'lucide-react';
 import { AdminAuthProvider, useAdminAuth } from '../context/AdminAuthContext.jsx';
@@ -17,6 +17,7 @@ import { adminLogout } from '../lib/api.js';
 function Shell() {
   const { user, checked, setUser } = useAdminAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   if (!checked) {
     return (
@@ -27,7 +28,10 @@ function Shell() {
   }
 
   if (!user) {
-    return <Navigate to="/admin/login" replace />;
+    // Carry the current page so login returns here — a token expiring
+    // mid-edit shouldn't also lose your place.
+    const next = encodeURIComponent(location.pathname + location.search);
+    return <Navigate to={`/admin/login?next=${next}`} replace />;
   }
 
   async function handleLogout() {

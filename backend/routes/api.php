@@ -44,6 +44,8 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function (): void {
     Route::put('clients/{client}', [ClientUserController::class, 'update']);
     Route::delete('clients/{client}', [ClientUserController::class, 'destroy']);
 
+    Route::get('invitations/{invitation}/preview', [AdminInvitationController::class, 'preview']);
+
     Route::prefix('invitations/{invitation}')->group(function (): void {
         Route::post('people', [PersonController::class, 'store']);
         Route::put('people/{person}', [PersonController::class, 'update']);

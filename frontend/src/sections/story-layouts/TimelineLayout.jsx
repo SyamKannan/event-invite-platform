@@ -10,7 +10,7 @@ export function TimelineLayout({ milestones }) {
       {/* The vertical line running down the center. */}
       <div
         aria-hidden
-        className="absolute left-1/2 top-0 bottom-0 w-px -translate-x-1/2 bg-gradient-to-b from-transparent via-accent/40 to-transparent sm:block"
+        className="absolute left-1/2 top-0 bottom-0 hidden w-px -translate-x-1/2 bg-gradient-to-b from-transparent via-accent/40 to-transparent sm:block"
       />
 
       <div className="grid gap-10">

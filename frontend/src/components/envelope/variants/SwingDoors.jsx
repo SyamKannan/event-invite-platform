@@ -78,7 +78,7 @@ export function SwingDoors() {
         className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-72 w-72 rounded-full"
         style={{
           background:
-            'radial-gradient(circle, rgba(255,215,140,0.85) 0%, rgba(255,180,90,0.4) 35%, transparent 70%)',
+            'radial-gradient(circle, rgb(var(--color-accent) / 0.85) 0%, rgb(var(--color-gold) / 0.45) 35%, transparent 70%)',
           filter: 'blur(8px)',
         }}
       />
@@ -104,9 +104,9 @@ export function SwingDoors() {
           style={{
             width: `${p.size}px`,
             height: `${p.size}px`,
-            background: 'radial-gradient(circle, rgb(255,225,160) 0%, rgb(212,168,95) 60%, transparent 100%)',
+            background: 'radial-gradient(circle, rgb(var(--color-accent)) 0%, rgb(var(--color-gold)) 60%, transparent 100%)',
             borderRadius: '50%',
-            boxShadow: '0 0 8px rgba(255,200,120,0.7)',
+            boxShadow: '0 0 8px rgb(var(--color-accent) / 0.7)',
           }}
         />
       ))}
@@ -114,7 +114,7 @@ export function SwingDoors() {
       <button
         type="button"
         onClick={handleOpen}
-        className="absolute inset-0 flex items-center justify-center cursor-pointer focus:outline-none"
+        className="absolute inset-0 flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-accent/70"
         aria-label="Open invitation"
       >
         <CoverContent opening={opening} />

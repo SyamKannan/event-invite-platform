@@ -54,7 +54,7 @@ export function UnfoldCard() {
       <button
         type="button"
         onClick={handleOpen}
-        className="absolute inset-0 flex items-center justify-center cursor-pointer focus:outline-none"
+        className="absolute inset-0 flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-accent/70"
         aria-label="Open invitation"
       >
         <CoverContent opening={opening} />

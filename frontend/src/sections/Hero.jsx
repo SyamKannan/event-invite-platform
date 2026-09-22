@@ -44,7 +44,14 @@ export function Hero() {
     if (!config.envelope.enabled) return;
     const onOpened = () => setNameRevealReady(true);
     window.addEventListener('envelope:opened', onOpened);
-    return () => window.removeEventListener('envelope:opened', onOpened);
+    // Safety net: if the cover never reports opening (e.g. its component
+    // errored and an ErrorBoundary removed it), reveal anyway rather than
+    // leaving the hero permanently blank.
+    const fallback = setTimeout(() => setNameRevealReady(true), 8000);
+    return () => {
+      window.removeEventListener('envelope:opened', onOpened);
+      clearTimeout(fallback);
+    };
   }, [config.envelope.enabled]);
 
   const { scrollY } = useScroll();
@@ -99,6 +106,17 @@ export function Hero() {
     >
       {/* Background photo with parallax. */}
       <motion.div className="absolute inset-0 -z-10" style={{ y: bgShift }}>
+        {/* No photo uploaded yet: a themed gradient wash rather than a flat
+            slab of background color. */}
+        {!hero.backgroundImage && (
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                'radial-gradient(ellipse at 30% 20%, rgb(var(--color-accent) / 0.22), transparent 55%), radial-gradient(ellipse at 75% 80%, rgb(var(--color-rose) / 0.2), transparent 60%)',
+            }}
+          />
+        )}
         {hero.backgroundImage && (
           <img
             src={hero.backgroundImage}
@@ -124,8 +142,8 @@ export function Hero() {
             width: `${orb.size}px`,
             height: `${orb.size}px`,
             background: orb.isAccent
-              ? 'radial-gradient(circle, rgba(212,168,95,0.18), transparent 70%)'
-              : 'radial-gradient(circle, rgba(207,142,132,0.15), transparent 70%)',
+              ? 'radial-gradient(circle, rgb(var(--color-accent) / 0.18), transparent 70%)'
+              : 'radial-gradient(circle, rgb(var(--color-rose) / 0.15), transparent 70%)',
             filter: 'blur(32px)',
             transform: 'translate(-50%, -50%)',
           }}

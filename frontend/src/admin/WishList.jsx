@@ -4,10 +4,11 @@
 // owning client too).
 
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Trash2 } from 'lucide-react';
+import { useParams } from 'react-router-dom';
+import { Trash2 } from 'lucide-react';
 import { adminDeleteWish, adminListWishes, errorMessage } from '../lib/api.js';
 import { useAdminAuth } from '../context/AdminAuthContext.jsx';
+import { InvitationNav } from './InvitationNav.jsx';
 
 export default function WishList() {
   const { id } = useParams();
@@ -41,11 +42,9 @@ export default function WishList() {
 
   return (
     <div>
-      <Link to="/admin" className="inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.2em] text-fg-soft transition hover:text-accent">
-        <ArrowLeft size={14} /> {user.role === 'client' ? 'Back' : 'Back to dashboard'}
-      </Link>
+      <InvitationNav invitationId={id} />
 
-      <h1 className="mt-3 font-display text-3xl">Guestbook Wishes</h1>
+      <h1 className="mt-6 font-display text-3xl">Guestbook Wishes</h1>
 
       {forbidden && (
         <p className="mt-6 text-sm text-rose">

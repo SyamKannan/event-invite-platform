@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\Concerns\AuthorizesInvitationAccess;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreInvitationRequest;
 use App\Http\Requests\UpdateInvitationRequest;
+use App\Http\Resources\InvitationConfigResource;
 use App\Http\Resources\InvitationResource;
 use App\Models\Invitation;
 use App\Models\Rsvp;
@@ -138,6 +139,21 @@ class InvitationController extends Controller
         $this->authorizeInvitation($invitation, $request->user());
 
         return new InvitationResource(
+            $invitation->load(['detail', 'people', 'scheduleEvents', 'milestones', 'galleryImages'])
+        );
+    }
+
+    /**
+     * The public page's exact config, but for a logged-in admin/owner and
+     * regardless of is_published — so a draft can be checked before anyone
+     * gets the link. The public endpoint deliberately 404s on drafts, which
+     * previously left "Preview" pointing at a "not found" page.
+     */
+    public function preview(Request $request, Invitation $invitation): InvitationConfigResource
+    {
+        $this->authorizeInvitation($invitation, $request->user());
+
+        return new InvitationConfigResource(
             $invitation->load(['detail', 'people', 'scheduleEvents', 'milestones', 'galleryImages'])
         );
     }

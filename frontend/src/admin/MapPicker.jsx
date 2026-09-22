@@ -6,16 +6,37 @@
 // demo data and read by the public Schedule page's QR code / Directions
 // button, so nothing on the public side needs to change.
 
-import { useState } from 'react';
-import { MapPin } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { MapPin, X } from 'lucide-react';
+
+// Pull the human-readable query back out of a saved
+// `https://maps.google.com/?q=…` link so editing an existing event starts
+// with its venue in the box (and a live preview) instead of blank.
+function queryFromUrl(url) {
+  if (!url) return '';
+  try {
+    return decodeURIComponent(new URL(url).searchParams.get('q') || '');
+  } catch {
+    return '';
+  }
+}
 
 export function MapPicker({ value, onChange }) {
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(() => queryFromUrl(value));
+  const trimmed = query.trim();
+  const committed = queryFromUrl(value);
 
-  function useThisLocation() {
-    if (!query.trim()) return;
-    onChange(`https://maps.google.com/?q=${encodeURIComponent(query.trim())}`);
-  }
+  // Commit what the admin typed automatically (debounced) — previously the
+  // text was thrown away unless they remembered to press "Use this", so a
+  // venue could look set and silently not be saved. The row's own Save
+  // button still does the actual persisting.
+  useEffect(() => {
+    if (trimmed === committed) return;
+    const id = setTimeout(() => {
+      onChange(trimmed ? `https://maps.google.com/?q=${encodeURIComponent(trimmed)}` : null);
+    }, 500);
+    return () => clearTimeout(id);
+  }, [trimmed, committed, onChange]);
 
   return (
     <div className="grid gap-2">
@@ -26,30 +47,35 @@ export function MapPicker({ value, onChange }) {
           placeholder="Search for a venue or address…"
           className="w-full rounded-xl border border-ink/15 bg-white px-4 py-2.5 text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30"
         />
-        <button
-          type="button"
-          onClick={useThisLocation}
-          disabled={!query.trim()}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-accent px-4 py-2.5 text-xs uppercase tracking-[0.15em] text-white disabled:opacity-40 transition hover:bg-gold"
-        >
-          <MapPin size={14} /> Use this
-        </button>
+        {trimmed && (
+          <button
+            type="button"
+            onClick={() => { setQuery(''); onChange(null); }}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-rose/40 px-4 py-2.5 text-xs uppercase tracking-[0.15em] text-rose transition hover:bg-rose/10"
+          >
+            <X size={14} /> Clear
+          </button>
+        )}
       </div>
 
-      {query.trim() && (
+      {trimmed && (
         <iframe
           title="Location preview"
+          key={committed || trimmed}
           className="h-56 w-full rounded-xl border border-accent/15"
-          src={`https://www.google.com/maps?q=${encodeURIComponent(query.trim())}&output=embed`}
+          src={`https://www.google.com/maps?q=${encodeURIComponent(trimmed)}&output=embed`}
           loading="lazy"
         />
       )}
 
-      {value && (
-        <p className="truncate text-xs text-fg-soft">
-          Current: <a href={value} target="_blank" rel="noreferrer" className="text-accent underline">{value}</a>
-        </p>
-      )}
+      <p className="flex items-center gap-1.5 text-xs text-fg-soft">
+        <MapPin size={12} className="shrink-0 text-accent" />
+        {value ? (
+          <>Guests get directions to <span className="truncate font-medium">{committed || value}</span></>
+        ) : (
+          'No location set — the map and QR code stay hidden for this event.'
+        )}
+      </p>
     </div>
   );
 }

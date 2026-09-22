@@ -142,6 +142,34 @@ class AdminInvitationEditingTest extends TestCase
         $this->assertModelExists($foreign);
     }
 
+    public function test_draft_can_be_previewed_by_admin_and_owner_but_not_publicly(): void
+    {
+        $client = User::factory()->create(['role' => 'client']);
+        $draft = Invitation::factory()->create(['is_published' => false, 'owner_id' => $client->id, 'type' => 'wedding']);
+        $draft->detail()->create(['event_date' => '2026-06-14 10:30:00']);
+        $stranger = User::factory()->create(['role' => 'client']);
+
+        // Public route still hides drafts.
+        $this->getJson("/api/invitations/{$draft->slug}")->assertNotFound();
+
+        // forgetGuards() between identities: the auth guard caches the
+        // resolved user across requests within a single test, so without it
+        // every later request keeps the first token's user.
+        $this->withHeader('Authorization', 'Bearer '.$stranger->createToken('t')->plainTextToken)
+            ->getJson("/api/admin/invitations/{$draft->id}/preview")->assertForbidden();
+
+        $this->app['auth']->forgetGuards();
+        $this->withHeader('Authorization', 'Bearer '.$client->createToken('t')->plainTextToken)
+            ->getJson("/api/admin/invitations/{$draft->id}/preview")->assertOk();
+
+        $this->app['auth']->forgetGuards();
+        $this->actingAsAdmin();
+        $this->getJson("/api/admin/invitations/{$draft->id}/preview")
+            ->assertOk()
+            ->assertJsonPath('data.slug', $draft->slug)
+            ->assertJsonPath('data.eventDateISO', '2026-06-14T10:30:00+00:00');
+    }
+
     public function test_csv_export_neutralizes_spreadsheet_formulas(): void
     {
         $this->actingAsAdmin();

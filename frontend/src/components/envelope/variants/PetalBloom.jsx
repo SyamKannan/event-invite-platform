@@ -85,7 +85,7 @@ export function PetalBloom() {
         <button
           type="button"
           onClick={handleOpen}
-          className="flex items-center justify-center cursor-pointer focus:outline-none"
+          className="flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-accent/70"
           aria-label="Open invitation"
         >
           <CoverContent
